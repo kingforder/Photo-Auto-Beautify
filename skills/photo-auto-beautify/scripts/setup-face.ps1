@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $skillRoot = Split-Path $PSScriptRoot -Parent
-if (-not $DepsDir) { $DepsDir = Join-Path $skillRoot '..\..\face-deps' }
+if (-not $DepsDir) { $DepsDir = Join-Path $skillRoot '..\face-deps' }
 if (-not $ModelPath) { $ModelPath = Join-Path $skillRoot 'assets\models\face_detection_yunet_2023mar.onnx' }
 $DepsDir = [System.IO.Path]::GetFullPath($DepsDir)
 $ModelPath = [System.IO.Path]::GetFullPath($ModelPath)

@@ -322,7 +322,7 @@ def main():
         f.write("- 正常图片默认 look2；`--strength min/max` 切换 look1/look3。\n")
         f.write("- 人像自动加皮肤平滑（强度随档位 1/2/3），不做瘦脸。\n")
         f.write("- 夜景用 ISO High + look2；高调/食物用 look2。\n")
-        f.write("- 明显过曝：RAW 用 RAWmakase XMP -2.5EV；JPG 用 RT 尽力修正。\n")
+        f.write("- 非 RAW/JPEG/PNG/TIFF 先归一化为工作 TIFF；明显过曝的 RAW 用 RAWmakase XMP -2.5EV。\n")
         f.write("- 疑似问题不生成任何文件；中间预览/暂存已清理。\n")
 
     print(f"processed={len(rows)} report={args.report}")
