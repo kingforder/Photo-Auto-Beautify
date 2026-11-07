@@ -11,6 +11,7 @@ import os
 import sys
 
 import numpy as np
+from PIL import ImageOps
 
 try:
     import cv2
@@ -27,7 +28,7 @@ import image_formats  # noqa: E402
 
 
 def load(path):
-    return cv2.cvtColor(np.asarray(image_formats.load_rgb(path)), cv2.COLOR_RGB2BGR)
+    return cv2.cvtColor(np.asarray(ImageOps.exif_transpose(image_formats.load_rgb(path))), cv2.COLOR_RGB2BGR)
 
 
 def metrics(img):
