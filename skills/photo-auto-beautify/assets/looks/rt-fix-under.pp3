@@ -1,0 +1,8 @@
+[Exposure]
+Auto=false
+Compensation=1.5
+HighlightCompr=30
+ShadowCompr=50
+Contrast=8
+HistogramMatching=false
+CurveFromHistogramMatching=false

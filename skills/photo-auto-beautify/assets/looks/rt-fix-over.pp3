@@ -1,0 +1,12 @@
+[Exposure]
+Auto=false
+Compensation=-1.5
+HighlightCompr=70
+ShadowCompr=20
+Contrast=10
+HistogramMatching=false
+CurveFromHistogramMatching=false
+
+[HLRecovery]
+Enabled=true
+Method=Coloropp

@@ -1,0 +1,5 @@
+[Dehaze]
+Enabled=true
+Strength=85
+Depth=60
+Saturation=30

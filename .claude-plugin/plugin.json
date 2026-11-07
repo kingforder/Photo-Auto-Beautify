@@ -1,0 +1,17 @@
+{
+  "name": "photo-auto-beautify",
+  "description": "Shell-only photo triage and beautification skill: normal photos auto-beautified, obvious issues get a fixed candidate, suspect issues get suggestions only.",
+  "version": "1.0.0",
+  "author": {
+    "name": "photo-auto-beautify contributors"
+  },
+  "license": "0BSD",
+  "keywords": [
+    "photo",
+    "raw",
+    "beautify",
+    "rawtherapee",
+    "portrait",
+    "agent-skill"
+  ]
+}

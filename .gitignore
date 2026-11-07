@@ -1,0 +1,15 @@
+# Third-party binaries and local dependencies (never commit)
+rt-5.13/
+face-deps/
+pipeline-tmp/
+pipeline-*/
+face-samples/
+style-*/
+test-*/
+
+# Generated outputs
+*.zip
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
