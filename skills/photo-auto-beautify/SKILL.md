@@ -77,6 +77,19 @@ python scripts\photo-pipeline.py `
 - `--overwrite-originals`: dangerous, JPG/JPEG only, explicit user request only;
 - read the report and confirm `*-fixed.jpg` before keeping it.
 
+On Linux/WSL, run `bash scripts/setup-rt.sh` first and use `python3`; the pipeline
+auto-detects the extracted AppImage under `rt-5.13/squashfs-root`. On macOS the
+same Python flow is expected but not yet verified.
+
+## Platforms
+
+| Platform | Status | Notes |
+| --- | --- | --- |
+| Windows 10/11 | Verified | PowerShell setup, portable RT |
+| Linux / WSL2 | Verified | AppImage extraction, no FUSE required |
+| WSL1 | Expected | Same userland flow as Linux; not tested here |
+| macOS | Expected | Python flow should work; RT build not yet verified |
+
 ## Scenes and styles
 
 - Scenes: `portrait`, `night`, `highkey`, `landscape`, `general`;
@@ -100,4 +113,6 @@ python scripts\photo-pipeline.py `
 - `references/styles.md`: B&W, dehaze, night, food
 - `references/formats.md`: input formats and dependencies
 - `scripts/photo-pipeline.py`: main pipeline
+- `scripts/setup-rt.sh`: Linux/WSL RawTherapee setup
+- `requirements.txt`: Python dependencies for Linux/macOS
 - `LICENSE` / `THIRD_PARTY_NOTICES.md`: 0BSD and third-party licenses

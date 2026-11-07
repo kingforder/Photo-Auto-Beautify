@@ -25,7 +25,7 @@ HEIC needs `pillow-heif`; JXL needs `ffmpeg` (libjxl).
 
 - Python 3 + Pillow + NumPy + OpenCV (face/culling/format conversion)
 - `pillow-heif` for HEIC/HEIF; `ffmpeg` for JPEG XL
-- RawTherapee 5.13 portable (GPLv3, downloaded by `scripts/setup-rt.ps1`)
+- RawTherapee 5.13: `scripts/setup-rt.ps1` on Windows, `scripts/setup-rt.sh` on Linux
 - Optional: RAWmakase (RAW previews and overexposure correction)
 
 ## Install and use
@@ -46,6 +46,19 @@ python scripts\photo-pipeline.py --input "C:\photos" --output-dir "C:\photos" `
   --strength medium --temp-dir "C:\temp\photo-pipeline" `
   --report "C:\photos\pipeline-report.md"
 ```
+
+Linux/WSL example:
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+bash scripts/setup-rt.sh
+python3 scripts/photo-pipeline.py \
+  --input "$HOME/photos" --output-dir "$HOME/photos" \
+  --strength medium --report "$HOME/photos/pipeline-report.md"
+```
+
+Linux needs Pillow/NumPy/OpenCV/pillow-heif in the active Python environment.
 
 Chinese readers: see the [Chinese README](../../README.zh-CN.md).
 

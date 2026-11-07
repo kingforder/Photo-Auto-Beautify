@@ -66,6 +66,22 @@ python "$Skill\scripts\photo-pipeline.py" `
 - `--temp-dir`：受限环境指定可写临时目录；
 - 跑完先看报告，再确认 `*-fixed.jpg` 是否保留。
 
+Linux / WSL：
+
+```bash
+cd skills/photo-auto-beautify
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+bash scripts/setup-rt.sh
+python3 scripts/photo-pipeline.py \
+  --input "$HOME/photos" --output-dir "$HOME/photos" \
+  --strength medium \
+  --report "$HOME/photos/pipeline-report.md"
+```
+
+Linux 需要当前 Python 环境已有 Pillow/NumPy/OpenCV/pillow-heif；建议用 venv
+或发行版包。未安装 RAWmakase 时，RAW 预览会自动回退到 RawTherapee。
+
 ## 覆盖原图（危险，默认关闭）
 
 默认绝不覆盖原图。只有用户明确要求并接受不可逆后果时，才加
@@ -79,10 +95,10 @@ python "$Skill\scripts\photo-pipeline.py" `
 
 ## 依赖
 
-- Windows 10/11 + PowerShell
+- Windows 10/11，或 Linux / WSL2
 - Python 3.10+，Pillow、NumPy、OpenCV
 - `pillow-heif`（HEIC/HEIF），`ffmpeg`（JPEG XL）
-- RawTherapee 5.13 便携版（GPLv3，由 `scripts/setup-rt.ps1` 下载）
+- RawTherapee 5.13：Windows 用 `scripts/setup-rt.ps1`，Linux 用 `scripts/setup-rt.sh`
 - 可选：RAWmakase（RAW 预览与过曝修正）
 
 ## 许可证

@@ -36,10 +36,10 @@ claude --plugin-dir .
 
 ## Requirements
 
-- Windows 10/11, PowerShell
+- Windows 10/11, or Linux / WSL2 (WSL2 verified; WSL1 should work but is untested)
 - Python 3.10+ with Pillow, NumPy, OpenCV
 - `pillow-heif` for HEIC/HEIF, `ffmpeg` (libjxl) for JPEG XL
-- RawTherapee 5.13 portable (downloaded by `scripts/setup-rt.ps1`, GPLv3)
+- RawTherapee 5.13: `scripts/setup-rt.ps1` on Windows, `scripts/setup-rt.sh` on Linux
 - Optional: RAWmakase (MIT) for RAW previews and overexposure correction
 
 ## Usage
@@ -60,6 +60,23 @@ python "$Skill\scripts\photo-pipeline.py" `
 - Normal RAW → `<name>.jpg`; other normal formats → `<name>-beauty.jpg`.
 - Obvious → `<name>-fixed.jpg`; ask the user before keeping it.
 - Suspect/blur → no file, only suggestions.
+
+Linux / WSL:
+
+```bash
+cd skills/photo-auto-beautify
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+bash scripts/setup-rt.sh
+python3 scripts/photo-pipeline.py \
+  --input "$HOME/photos" --output-dir "$HOME/photos" \
+  --strength medium \
+  --report "$HOME/photos/pipeline-report.md"
+```
+
+Linux needs Pillow/NumPy/OpenCV/pillow-heif in the active Python environment;
+use a venv or your distro packages. RAW previews fall back to RawTherapee when
+RAWmakase is not installed.
 
 ### Overwriting originals (dangerous)
 

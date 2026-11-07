@@ -34,8 +34,17 @@ SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(SKILL, "scripts"))
 import image_formats  # noqa: E402
 
-DEFAULT_RT = os.path.abspath(os.path.join(SKILL, "..", "rt-5.13", "RawTherapee_5.13_win64_x86_64_release"))
-DEFAULT_RM = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "RAWmakase", "rawmakase.exe")
+_RT_CANDIDATES = [
+    os.environ.get("RT_ROOT"),
+    os.path.abspath(os.path.join(SKILL, "..", "rt-5.13", "RawTherapee_5.13_win64_x86_64_release")),
+    os.path.abspath(os.path.join(SKILL, "..", "rt-5.13", "squashfs-root", "usr", "bin")),
+    os.path.abspath(os.path.join(SKILL, "..", "rt-5.13", "squashfs-root")),
+    os.path.abspath(os.path.join(SKILL, "..", "rt-5.13")),
+]
+DEFAULT_RT = next((p for p in _RT_CANDIDATES if p and os.path.exists(p)), _RT_CANDIDATES[1])
+DEFAULT_RM = os.environ.get("RAWMAKASE") or os.path.join(
+    os.environ.get("LOCALAPPDATA", ""), "Programs", "RAWmakase", "rawmakase.exe"
+)
 DEFAULT_MODEL = os.path.join(SKILL, "assets", "models", "face_detection_yunet_2023mar.onnx")
 LOOKS = {"min": "rt-look1.pp3", "medium": "rt-look2.pp3", "max": "rt-look3.pp3"}
 FACE_STRENGTH = {"min": 1, "medium": 2, "max": 3}
@@ -136,14 +145,40 @@ def fixed_name(src, outdir):
     return unique(os.path.join(outdir, base + "-fixed.jpg"))
 
 
+def rt_tool(rt):
+    bases = [rt, os.path.join(rt, "usr", "bin"), os.path.join(rt, "squashfs-root", "usr", "bin")]
+    for base in bases:
+        for name in ("rawtherapee-cli.exe", "rawtherapee-cli"):
+            path = os.path.join(base, name)
+            if os.path.isfile(path):
+                return path
+    raise FileNotFoundError(
+        f"rawtherapee-cli not found under {rt!r}; pass --rt-root pointing at the "
+        "RawTherapee folder (Windows) or usr/bin (Linux AppImage extract)."
+    )
+
+
+def rt_profiles(rt):
+    bases = [rt, os.path.join(rt, "usr", "bin"), os.path.join(rt, "squashfs-root", "usr", "bin")]
+    for base in bases:
+        path = os.path.join(base, "profiles")
+        if os.path.isdir(path):
+            return path
+    raise FileNotFoundError(f"RawTherapee profiles folder not found under {rt!r}")
+
+
 def render_rt(src, dst, is_raw, scene, strength, rt, tmp):
+    cli = rt_tool(rt)
     profiles = []
     if is_raw:
         iso = "High" if scene == "night" else "Low"
-        profiles.append(os.path.join(rt, "profiles", f"Auto-Matched Curve - ISO {iso}.pp3"))
+        auto = os.path.join(rt_profiles(rt), f"Auto-Matched Curve - ISO {iso}.pp3")
+        if not os.path.isfile(auto):
+            raise FileNotFoundError(f"missing RawTherapee profile: {auto}")
+        profiles.append(auto)
     profiles.append(os.path.join(SKILL, "assets", "looks", LOOKS[strength]))
     out = os.path.join(tmp, os.path.splitext(os.path.basename(src))[0] + "-rt.jpg")
-    cmd = [os.path.join(rt, "rawtherapee-cli.exe"), "-o", out]
+    cmd = [cli, "-o", out]
     for p in profiles:
         cmd += ["-p", p]
     cmd += ["-j92", "-Y", "-c", src]
@@ -169,7 +204,7 @@ def fix_over(src, dst, is_raw, rt, rm, tmp):
         return "RAWmakase XMP -2.5EV"
     look = os.path.join(SKILL, "assets", "looks", "rt-fix-over.pp3")
     out = os.path.join(tmp, "fix-over.jpg")
-    run([os.path.join(rt, "rawtherapee-cli.exe"), "-o", out, "-p", look, "-j92", "-Y", "-c", src])
+    run([rt_tool(rt), "-o", out, "-p", look, "-j92", "-Y", "-c", src])
     shutil.copy2(out, dst)
     return "RT fix-over (best effort)"
 
@@ -177,7 +212,7 @@ def fix_over(src, dst, is_raw, rt, rm, tmp):
 def fix_under(src, dst, rt, tmp):
     look = os.path.join(SKILL, "assets", "looks", "rt-fix-under.pp3")
     out = os.path.join(tmp, "fix-under.jpg")
-    run([os.path.join(rt, "rawtherapee-cli.exe"), "-o", out, "-p", look, "-j92", "-Y", "-c", src])
+    run([rt_tool(rt), "-o", out, "-p", look, "-j92", "-Y", "-c", src])
     shutil.copy2(out, dst)
     return "RT fix-under +1.5EV"
 
@@ -227,7 +262,13 @@ def main():
                 working = src if (is_raw or name.lower().endswith(image_formats.RT_NATIVE)) else image_formats.normalize_for_rt(src, tmp)
                 if is_raw:
                     preview = os.path.join(tmp, os.path.splitext(name)[0] + "-preview.jpg")
-                    run([args.rawmakase, "render", src, preview, "--max-edge", "900", "--overwrite"])
+                    if os.path.isfile(args.rawmakase):
+                        run([args.rawmakase, "render", src, preview, "--max-edge", "900", "--overwrite"])
+                    else:
+                        # Linux/macOS: no RAWmakase; use RT's camera-matched
+                        # profile for the analysis preview.
+                        auto = os.path.join(rt_profiles(args.rt_root), "Auto-Matched Curve - ISO Low.pp3")
+                        run([rt_tool(args.rt_root), "-o", preview, "-p", auto, "-j92", "-Y", "-c", src])
                 else:
                     preview = working
                 m = measure(preview, face_mod, args.model)

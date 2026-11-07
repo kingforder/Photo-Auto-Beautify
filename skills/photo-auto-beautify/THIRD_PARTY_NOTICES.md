@@ -18,8 +18,8 @@ must remain with the model file.
 
 ## Downloaded, not bundled: RawTherapee
 
-- Used by: `scripts/setup-rt.ps1`, `scripts/rt-batch.ps1`,
-  `scripts/photo-pipeline.py`
+- Used by: `scripts/setup-rt.ps1`, `scripts/setup-rt.sh`,
+  `scripts/rt-batch.ps1`, `scripts/photo-pipeline.py`
 - License: **GNU GPL v3**
 - Copyright: RawTherapee contributors
 - Upstream: https://github.com/RawTherapee/RawTherapee
