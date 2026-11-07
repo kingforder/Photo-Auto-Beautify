@@ -11,7 +11,6 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image, ImageOps
 
 try:
     import cv2
@@ -23,11 +22,12 @@ except ImportError:
             break
     import cv2
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import image_formats  # noqa: E402
+
 
 def load(path):
-    pil = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
-    img = np.asarray(pil)
-    return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    return cv2.cvtColor(np.asarray(image_formats.load_rgb(path)), cv2.COLOR_RGB2BGR)
 
 
 def metrics(img):
@@ -60,7 +60,7 @@ def main():
     p.add_argument("--report", default="cull-report.md")
     args = p.parse_args()
 
-    exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff")
+    exts = image_formats.RT_NATIVE + image_formats.PIL_EXT
     rows = []
     for name in sorted(os.listdir(args.input)):
         if not name.lower().endswith(exts):

@@ -18,7 +18,7 @@ license: 0BSD
 | 人像 | 保守版 | 皮肤平滑、眼白/牙齿轻微提亮；不瘦脸、不改五官 |
 | 风格化 | 可扩展 | 黑白、去雾、夜景、食物；look 配置可继续增加 |
 | 选片 | 稳定 | 模糊、曝光异常、近似重复；只报告不删图 |
-| 格式 | 广泛 | RAW、JPEG、PNG、TIFF、WebP、AVIF、HEIC/HEIF、JXL、BMP |
+| 格式 | 广泛 | RAW、JPEG、PNG、TIFF、WebP、AVIF、HEIC/HEIF、JXL、BMP、GIF |
 | 交付 | 稳定 | 原图保护、统一命名、修正候选确认、清理中间产物 |
 | 扩展性 | 设计目标 | 新场景、新风格、新检测器以脚本/配置接入，不改主流程 |
 
@@ -77,6 +77,7 @@ python scripts\photo-pipeline.py `
 - 场景：`portrait` / `night` / `highkey` / `landscape` / `general`；
 - 人像自动附带皮肤平滑，强度随档位；
 - 风格：黑白、轻/强去雾、夜景、食物；配置在 `assets/looks/`，可继续扩展；
+- 主流水线默认只套场景 look；黑白/去雾等实验风格通过 `rt-batch.ps1` 或 `assets/looks/` 单独调用，不自动混入；
 - 黑白/去雾使用 `-ProfileOnly`，避免二次改曲线。
 
 ## 边界

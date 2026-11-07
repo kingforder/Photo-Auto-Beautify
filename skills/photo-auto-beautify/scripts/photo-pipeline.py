@@ -11,6 +11,7 @@ Policy:
 import argparse
 import importlib.util
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -215,7 +216,7 @@ def main():
             if os.path.splitext(f)[1].lower() in image_formats.ALL_EXT
             and not f.lower().startswith(".")
             and not any(f.lower().endswith(s + os.path.splitext(f)[1].lower()) for s in ("-beauty", "-fixed"))
-            and "-rt" not in f.lower()
+            and not re.search(r"-rt\d*(?=\.|$)", f.lower())
         ]
         for name in files:
             src = os.path.join(args.input, name)
@@ -232,7 +233,8 @@ def main():
                 m = measure(preview, face_mod, args.model)
                 rows.append({"file": name, "src": src, "working": working, "raw": is_raw, "preview": preview, "m": m})
             except Exception as e:
-                rows.append({"file": name, "src": src, "working": src, "raw": is_raw, "m": None, "error": str(e)})
+                rows.append({"file": name, "src": src, "working": src, "raw": is_raw, "m": None,
+                             "error": str(e), "note": str(e)})
 
         valid = [r for r in rows if r.get("m")]
         median_sharp = float(np.median([r["m"]["sharp"] for r in valid])) if valid else 0
@@ -247,7 +249,8 @@ def main():
         for r in rows:
             r["action"] = "none"
             r["output"] = ""
-            r["note"] = ""
+            if "note" not in r:
+                r["note"] = ""
             if args.dry_run:
                 continue
             src = r.get("working") or r["src"]
@@ -321,13 +324,13 @@ def main():
         f.write("\n## 疑似问题（只给建议，未生成文件）\n\n")
         f.write("| 原图 | 场景 | 疑点/建议 |\n| --- | --- | --- |\n")
         for r in rows:
-            if r["action"] == "suggest" and r["class"] != "obvious_blur":
+            if r["action"] == "suggest" and r["class"] not in ("obvious_blur", "error"):
                 f.write(f"| {r['file']} | {r['scene']} | {r['note']} |\n")
         f.write("\n## 读取/转换失败\n\n")
         f.write("| 原图 | 原因 |\n| --- | --- |\n")
         for r in rows:
             if r["class"] == "error":
-                f.write(f"| {r['file']} | {r['note']} |\n")
+                f.write(f"| {r['file']} | {r.get('error') or r['note']} |\n")
         f.write("\n## 方案说明\n\n")
         f.write("- 正常图片默认 look2；`--strength min/max` 切换 look1/look3。\n")
         f.write("- 人像自动加皮肤平滑（强度随档位 1/2/3），不做瘦脸。\n")

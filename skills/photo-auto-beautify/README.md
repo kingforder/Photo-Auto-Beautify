@@ -14,7 +14,7 @@
 ## 支持格式
 
 RAW（RW2/DNG/CR2/CR3/NEF/ARW/RAF/ORF/PEF/SRW 等）、JPEG、PNG、TIFF、
-WebP、AVIF、HEIC/HEIF、JPEG XL、BMP；输出统一 JPEG。
+WebP、AVIF、HEIC/HEIF、JPEG XL、BMP、GIF（首帧）；输出统一 JPEG。
 HEIC 需要 `pillow-heif`，JXL 需要 `ffmpeg`（libjxl）。
 
 ## 依赖

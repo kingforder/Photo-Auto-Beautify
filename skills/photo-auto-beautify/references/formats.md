@@ -12,7 +12,7 @@
 | HEIC / HEIF | pillow-heif → TIFF | 支持（需安装 pillow-heif） |
 | JPEG XL (.jxl) | ffmpeg（libjxl）→ TIFF | 支持（需 ffmpeg） |
 | BMP | Pillow → TIFF | 支持 |
-| GIF（静态首帧） | Pillow → TIFF | 可读，但不是照片主格式 |
+| GIF（静态首帧） | Pillow → 工作 TIFF | 支持（首帧） |
 
 ## 依赖
 

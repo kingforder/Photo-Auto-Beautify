@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Input format support for the photo pipeline.
 
-RAW and JPEG/PNG/TIFF go straight to RawTherapee. WebP/AVIF/HEIC/HEIF/BMP are
-decoded with Pillow (HEIC needs pillow-heif), JPEG XL with ffmpeg, and written
-to a temporary 16-bit TIFF for RawTherapee.
+RAW and JPEG/PNG/TIFF go straight to RawTherapee. WebP/AVIF/HEIC/HEIF/BMP/GIF
+are decoded with Pillow (HEIC needs pillow-heif), JPEG XL with ffmpeg, and
+written to a temporary 16-bit TIFF for RawTherapee.
 """
 
 import glob
@@ -21,7 +21,7 @@ RAW_EXT = (
     ".rw2", ".rwl", ".rwz", ".sr2", ".srf", ".srw", ".x3f",
 )
 RT_NATIVE = (".jpg", ".jpeg", ".png", ".tif", ".tiff")
-PIL_EXT = (".webp", ".avif", ".heic", ".heif", ".bmp")
+PIL_EXT = (".webp", ".avif", ".heic", ".heif", ".bmp", ".gif")
 JXL_EXT = (".jxl",)
 ALL_EXT = RAW_EXT + RT_NATIVE + PIL_EXT + JXL_EXT
 
@@ -77,7 +77,10 @@ def normalize_for_rt(src, tmp):
         return src
 
     base = os.path.splitext(os.path.basename(src))[0]
-    out = os.path.join(tmp, base + "-normalized.tif")
+    # Include the source extension so same-basename files (a.webp + a.avif)
+    # never share one working TIFF.
+    tag = ext.lstrip(".")
+    out = os.path.join(tmp, f"{base}-{tag}-normalized.tif")
 
     if ext in PIL_EXT:
         if ext in (".heic", ".heif") and not ensure_heif():
@@ -102,7 +105,7 @@ def normalize_for_rt(src, tmp):
 
 
 def supported_name():
-    return "RAW, JPEG, PNG, TIFF, WebP, AVIF, HEIC/HEIF, JXL, BMP"
+    return "RAW, JPEG, PNG, TIFF, WebP, AVIF, HEIC/HEIF, JXL, BMP, GIF"
 
 
 if __name__ == "__main__":
