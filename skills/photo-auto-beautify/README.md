@@ -1,4 +1,6 @@
-# photo-auto-beautify
+# Photo Auto Beautify · 本地免费批量图片美化
+
+> 不订阅、不上传、不逐张修图：一条命令把整批 RAW/JPG/HEIC 出成可交付成片。
 
 纯命令行照片流水线 skill：正常片自动美化，明显问题生成修正候选并询问，疑似问题只给建议。
 

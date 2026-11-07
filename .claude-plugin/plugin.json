@@ -1,6 +1,6 @@
 {
   "name": "photo-auto-beautify",
-  "description": "Shell-only photo triage and beautification skill: normal photos auto-beautified, obvious issues get a fixed candidate, suspect issues get suggestions only.",
+  "description": "Local, free, batch photo beautification: triage, scene-aware color, portrait/styles, culling and mainstream formats; no cloud, no subscription.",
   "version": "1.0.0",
   "author": {
     "name": "photo-auto-beautify contributors"
@@ -10,6 +10,11 @@
     "photo",
     "raw",
     "beautify",
+    "batch",
+    "local",
+    "free",
+    "heic",
+    "photo-editing",
     "rawtherapee",
     "portrait",
     "agent-skill"

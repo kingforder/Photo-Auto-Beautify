@@ -1,4 +1,7 @@
-# photo-auto-beautify
+# Photo Auto Beautify
+
+**Local, free, batch photo beautification for AI agents.**
+不订阅、不上传、不逐张修图：一条命令把整批 RAW/JPG/HEIC 出成可交付成片。
 
 A shell-only photo pipeline skill for AI agents. It triages a folder into
 **normal / obvious problem / suspect**, then:
