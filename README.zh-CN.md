@@ -70,6 +70,8 @@ Linux / WSL：
 
 ```bash
 cd skills/photo-auto-beautify
+# 仅 Debian/Ubuntu，缺 venv/pip 时：
+# sudo apt install python3-venv python3-pip
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 bash scripts/setup-rt.sh
