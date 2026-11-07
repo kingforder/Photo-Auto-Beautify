@@ -33,7 +33,7 @@ HEIC needs `pillow-heif`; JXL needs `ffmpeg` (libjxl).
 From GitHub:
 
 ```bash
-npx skills add kingforder/photo-auto-beautify
+npx skills add kingforder/Photo-Auto-Beautify
 ```
 
 Or copy `skills/photo-auto-beautify/` into your agent's skills directory.

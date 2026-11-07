@@ -21,7 +21,7 @@ general), optional face smoothing, and no full-frame generative edits.
 Published through [skills.sh](https://www.skills.sh):
 
 ```bash
-npx skills add kingforder/photo-auto-beautify
+npx skills add kingforder/Photo-Auto-Beautify
 ```
 
 Or copy `skills/photo-auto-beautify/` into your agent's skills directory.

@@ -43,7 +43,7 @@ HEIC 需要 `pillow-heif`；JXL 需要 `ffmpeg`（libjxl）。
 ## 安装
 
 ```bash
-npx skills add kingforder/photo-auto-beautify
+npx skills add kingforder/Photo-Auto-Beautify
 ```
 
 或复制 `skills/photo-auto-beautify/` 到 agent 的 skills 目录。
