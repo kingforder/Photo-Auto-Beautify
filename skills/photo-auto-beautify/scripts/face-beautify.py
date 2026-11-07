@@ -227,12 +227,12 @@ def main():
         rows.append({"file": name, "faces": count, "status": "ok", "output": dst})
 
     with open(args.report, "w", encoding="utf-8-sig") as f:
-        f.write("# 人像美化报告（仅生成新文件，不改原图）\n\n")
-        f.write(f"输入：{args.input}\n\n")
-        f.write("| 文件 | 检测到人脸 | 状态 |\n| --- | ---: | --- |\n")
+        f.write("# Portrait beauty report (new files only; originals untouched)\n\n")
+        f.write(f"Input: {args.input}\n\n")
+        f.write("| File | Faces detected | Status |\n| --- | ---: | --- |\n")
         for r in rows:
             f.write(f"| {r['file']} | {r['faces']} | {r['status']} |\n")
-        f.write("\n> 仅做皮肤平滑与轻微眼白/牙齿提亮；不做瘦脸、不生成内容。\n")
+        f.write("\n> Skin smoothing and slight sclera/teeth brightening only; no face reshaping or generated content.\n")
     print(f"processed={len(rows)} ok={sum(r['status'] == 'ok' for r in rows)} report={args.report}")
     for r in rows:
         print(f"  {r['file']}: faces={r['faces']} {r['status']}")

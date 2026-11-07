@@ -1,40 +1,43 @@
-# 人像 / 人脸美化模块
+# Portrait / face beauty module
 
-保守版：只做皮肤平滑 + 轻微眼白/牙齿提亮；**不瘦脸、不改变五官、不生成内容**。
+Conservative by design: skin smoothing plus slight sclera/teeth brightening.
+**No face reshaping, no identity changes, no generated content.**
 
-## 能力
+## Capabilities
 
-- 用 OpenCV YuNet 检测人脸（5 个关键点：双眼、鼻、两侧嘴角）；
-- 大图先缩到 1600px 检测，再映射回原尺寸，避免重复框和漏检；
-- 脸部椭圆蒙版，排除眼睛、眉毛、嘴唇；
-- 双边滤波平滑皮肤，保留 18% 原始微纹理，避免塑料感；
-- 可选：眼白/牙齿低饱和高亮区域轻微提亮；
-- 批量时检测到 0 张脸的图片**跳过**，并写报告；
-- 默认 `--min-face-ratio 0.04`：小于画面宽度 4% 的背景脸/误报直接跳过，
-  避免磨到路人或后脑勺。
-- 输出 `-face.jpg`，原图不动。
+- Detect faces with OpenCV YuNet (five landmarks: eyes, nose, mouth corners);
+- Downscale large images to 1600 px for detection, then map boxes back to avoid
+  duplicate/false boxes;
+- Build an elliptical face mask that excludes eyes, eyebrows and lips;
+- Smooth skin with a bilateral filter while retaining 18% of the original
+  micro-texture to avoid a plastic look;
+- Optionally brighten low-saturation, bright sclera/teeth regions slightly;
+- Skip images with zero usable faces and note them in the report;
+- Default `--min-face-ratio 0.04`: faces narrower than 4% of the frame are
+  ignored to avoid smoothing bystanders or the back of a head;
+- Write `-face.jpg`; the original is untouched.
 
-## 不做的
+## Not supported
 
-- 不磨掉全部毛孔、不改变肤色/身份；
-- 不瘦脸、不放大眼睛、不换表情；
-- 不去痘/去斑（需要局部修补或生成式模型）；
-- 不处理 RAW；先经 RawTherapee 输出 JPG 再进这一步。
+- Removing every pore or changing skin tone/identity;
+- Slimming the face, enlarging eyes, or changing expression;
+- Acne/scar removal (needs local retouching or generative models);
+- RAW input; render to JPG with RawTherapee first.
 
-## 安装
+## Install
 
 ```powershell
-$env:PYTHON = "C:\path\to\python.exe"   # 可选，默认 python
+$env:PYTHON = "C:\path\to\python.exe"   # optional; defaults to python
 powershell -ExecutionPolicy Bypass -File scripts\setup-face.ps1
 ```
 
-依赖：`opencv-python-headless`、`numpy`、`Pillow`；模型 232 KB，放在
-`assets\models\face_detection_yunet_2023mar.onnx`，脚本会校验 SHA256。
+Dependencies: `opencv-python-headless`, `numpy`, `Pillow`; the 232 KB model lives
+in `assets\models\face_detection_yunet_2023mar.onnx` and is SHA256-checked.
 
-如果 pip 不可用，可直接把 OpenCV wheel 解压到 `face-deps`，或把已安装的 cv2 放进
-`PYTHONPATH`。
+If pip is unavailable, unpack an OpenCV wheel into `face-deps`, or put an
+existing `cv2` on `PYTHONPATH`.
 
-## 使用
+## Usage
 
 ```powershell
 $env:PYTHONPATH = "..\..\face-deps"
@@ -46,48 +49,52 @@ python scripts\face-beautify.py `
   --report ".\face-report.md"
 ```
 
-强度：
+Strengths:
 
-| 档 | 皮肤混合 | 适用 |
+| Level | Skin blend | Suitable for |
 | --- | ---: | --- |
-| 1 | 0.35 | 自然、保留皮肤质感；多数人像建议 |
-| 2 | 0.55 | 明显平滑，仍保留五官边缘 |
-| 3 | 0.72 | 强磨皮，毛孔基本消失；只适合小图/社媒 |
+| 1 | 0.35 | Natural, keeps texture; recommended for most portraits |
+| 2 | 0.55 | Visible smoothing, facial edges preserved |
+| 3 | 0.72 | Strong smoothing, pores mostly gone; small images/social only |
 
-可选：`--no-eyes`、`--no-teeth`、`--dry-run`（只报告检测到几张脸，不写图）。
+Options: `--no-eyes`, `--no-teeth`, `--dry-run` (report face counts without writing).
 
-## 实测
+## Tested
 
-用一张公有领域官方肖像（2687×3356）测试：
+On a public-domain official portrait (2687×3356):
 
-- 检测到 1 张脸；
-- 强度 1：轻微平滑，皮肤纹理保留；
-- 强度 2：平滑明显，眼/眉/唇保持清晰；
-- 强度 3：接近“磨皮”，毛孔消失，开始有塑料感。
+- one face detected;
+- level 1: light smoothing, skin texture retained;
+- level 2: clear smoothing, eyes/brows/lips stay sharp;
+- level 3: close to "airbrushed"; pores disappear and a plastic look begins.
 
-批量测试：一张人像 + 一张城市（无脸），人像输出 `-face.jpg`，城市被标记
-`skipped: no face`，原图均未修改。
+Batch test: one portrait + one city image (no face). The portrait produced
+`-face.jpg`; the city was marked `skipped: no face`; neither original changed.
 
-测试文件夹实测（39 RAW 预览 + 8 JPG）：
+On the test folder (39 RAW previews + 8 JPG):
 
-- 可用人像：**0 张**；
-- `P1022133`：背面，检测为误报，且脸宽 31px（占画面 3.4%）被最小比例过滤；
-- `P1022141`：远景侧脸 21×29px（占画面 2.3%），被过滤；
-- 其余无检测。结论：该文件夹不适合做人脸美化，需要专门的人像文件夹。
+- usable portraits: **0**;
+- `P1022133`: back of a head, false positive; face width 31 px (3.4%) filtered
+  by the minimum ratio;
+- `P1022141`: distant profile, 21×29 px (2.3%), filtered;
+- no other detections. Conclusion: that folder is not suitable for face beauty;
+  use a dedicated portrait folder.
 
-## 限制与风险
+## Limits and risks
 
-- 侧脸、遮挡、合影、逆光、低分辨率会降低检测/蒙版质量；
-- 深肤色/高光皮肤可能出现过白或边缘不自然，需人工看样片；
-- 强度 3 容易假；默认用 1–2；
-- 不处理痘痘、疤痕、眼袋结构，只做整体平滑；
-- 不要对新闻/纪实/证件照默认使用；涉及身份与真实性，必须由用户决定；
-- 全部本地处理，不上传人脸数据。
+- Profiles, occlusion, group photos, backlight and low resolution reduce
+  detection/mask quality;
+- Deep or highlighted skin may become too pale or show edge artifacts; review samples;
+- Level 3 looks fake easily; default to 1–2;
+- Acne, scars and under-eye structure are not handled; only global smoothing;
+- Do not apply by default to news, documentary or ID photos; identity and
+  authenticity are the user's decision;
+- Everything is local; no face data is uploaded.
 
-## 建议流程
+## Suggested workflow
 
-1. 先 `--dry-run` 看检测数量；
-2. 选 2–3 张代表图出 1/2/3 三档样片；
-3. 用户确认强度后批量；
-4. 批量输出 `-face` 后缀，保留原图；
-5. 报告里列出“未检测到人脸/多张脸”的图片，提醒人工复核。
+1. Run `--dry-run` to see detection counts;
+2. Pick 2–3 representative images and render levels 1/2/3;
+3. Confirm the strength with the user, then batch;
+4. Write `-face` outputs and keep originals;
+5. List "no face / multiple faces" images in the report for manual review.

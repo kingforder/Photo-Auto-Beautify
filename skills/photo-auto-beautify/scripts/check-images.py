@@ -48,18 +48,18 @@ def metrics(path):
 def classify(r):
     """Only prompt-worthy calls; never an instruction to change the photo."""
     if r["mean"] >= 200 and r["range"] <= 80 and r["hot_pct"] >= 20:
-        return "强提示：全局过曝/洗白"
+        return "Strong hint: global overexposure/washed out"
     if r["mean"] <= 25 and r["dark_pct"] >= 40:
-        return "强提示：全局欠曝"
+        return "Strong hint: global underexposure"
     if r["hot_pct"] >= 8:
-        return "提示：高光裁切明显（可能是亮天空/太阳/灯光）"
+        return "Hint: obvious highlight clipping (bright sky/sun/lights)"
     if r["hot_pct"] >= 3:
-        return "提示：局部高光（可能是亮天空/灯光）"
+        return "Hint: local highlights (bright sky/lights)"
     if r["mean"] <= 55 and r["dark_pct"] >= 8:
-        return "提示：偏暗（可能是夜景/剪影）"
+        return "Hint: dark (night/silhouette)"
     if r["range"] <= 55 and 60 <= r["mean"] <= 200:
-        return "提示：低对比（可能是雾天/水面）"
-    return "正常"
+        return "Hint: low contrast (fog/water)"
+    return "OK"
 
 
 def main():
@@ -95,20 +95,20 @@ def main():
     for r in rows:
         r["flag"] = classify(r)
 
-    rows.sort(key=lambda r: (r["flag"] == "正常", -r["hot_pct"], r["mean"]))
+    rows.sort(key=lambda r: (r["flag"] == "OK", -r["hot_pct"], r["mean"]))
     with open(args.json, "w", encoding="utf-8") as f:
         json.dump(rows, f, ensure_ascii=False, indent=1)
 
-    flagged = [r for r in rows if r["flag"] != "正常"]
+    flagged = [r for r in rows if r["flag"] != "OK"]
     with open(args.report, "w", encoding="utf-8-sig") as f:
-        f.write("# 图片异常检查报告（仅提示，未修改任何文件）\n\n")
+        f.write("# Image anomaly check (suggestions only; no files modified)\n\n")
         f.write(
-            f"范围：{len(rows)} 张（RAW 预览 + 原 JPG）；"
-            "指标：平均亮度 mean、动态范围 p95-p5、高光裁切 hot%、暗部 dark%。\n\n"
+            f"Scope: {len(rows)} images (RAW previews + original JPG); "
+            "metrics: mean luminance, dynamic range p95-p5, highlight clipping hot%, dark%.\n\n"
         )
-        f.write("## 需要你判断的提示\n\n")
+        f.write("## Items for your judgment\n\n")
         if flagged:
-            f.write("| 文件 | 来源 | 判断 | mean | range | hot% | dark% |\n")
+            f.write("| File | Source | Finding | mean | range | hot% | dark% |\n")
             f.write("| --- | --- | --- | ---: | ---: | ---: | ---: |\n")
             for r in flagged:
                 f.write(
@@ -116,12 +116,12 @@ def main():
                     f"{r['range']} | {r['hot_pct']} | {r['dark_pct']} |\n"
                 )
         else:
-            f.write("未发现明显异常。\n")
-        f.write("\n## 其余\n\n")
-        f.write(f"{len(rows) - len(flagged)} 张未发现明显异常。\n")
+            f.write("No obvious anomalies found.\n")
+        f.write("\n## Others\n\n")
+        f.write(f"{len(rows) - len(flagged)} images showed no obvious anomaly.\n")
         f.write(
-            "\n> 提示只代表统计上偏离，不代表照片有问题；亮天空、太阳、夜景灯光、"
-            "剪影和雾天都可能触发。最终是否处理由你判断。\n"
+            "\n> Flags indicate statistical deviation, not a bad photo; bright sky, sun, "
+            "night lights, silhouettes and fog can all trigger them. Whether to act is your call.\n"
         )
 
     print(f"rows={len(rows)} flagged={len(flagged)}")

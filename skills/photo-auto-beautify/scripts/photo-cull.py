@@ -80,14 +80,14 @@ def main():
     for r in valid:
         flags = []
         if r["sharpness"] < max(30.0, median_sharp * 0.4):
-            flags.append("相对模糊")
+            flags.append("Relatively soft")
         if r["mean"] >= 205:
-            flags.append("整体偏亮")
+            flags.append("Overall bright")
         if r["mean"] <= 38 and r["dark"] >= 25:
-            flags.append("整体偏暗")
+            flags.append("Overall dark")
         if r["hot"] >= 10:
-            flags.append("高光偏多")
-        r["flags"] = "、".join(flags) if flags else "正常"
+            flags.append("Highlights clipped")
+        r["flags"] = ", ".join(flags) if flags else "OK"
 
     # Near-duplicates: Hamming distance <= 4 on a 256-bit average hash.
     groups = []
@@ -112,25 +112,25 @@ def main():
         used.add(i)
 
     with open(args.report, "w", encoding="utf-8-sig") as f:
-        f.write("# 选片报告（只提示，不改/不删图）\n\n")
-        f.write(f"范围：{args.input}，{len(rows)} 张。\n\n")
-        f.write("| 文件 | 清晰度 | 均值 | 高光% | 暗部% | 提示 |\n")
+        f.write("# Culling report (suggestions only; no edits or deletes)\n\n")
+        f.write(f"Scope: {args.input}, {len(rows)} images.\n\n")
+        f.write("| File | Sharpness | Mean | Hot% | Dark% | Flag |\n")
         f.write("| --- | ---: | ---: | ---: | ---: | --- |\n")
         for r in valid:
             f.write(f"| {r['file']} | {r['sharpness']} | {r['mean']} | {r['hot']} | {r['dark']} | {r['flags']} |\n")
         for r in rows:
             if "error" in r:
-                f.write(f"| {r['file']} | - | - | - | - | 读取失败：{r['error']} |\n")
-        f.write("\n## 近似重复\n\n")
+                f.write(f"| {r['file']} | - | - | - | - | Read failed: {r['error']} |\n")
+        f.write("\n## Near-duplicates\n\n")
         if groups:
             for g in groups:
                 f.write("- " + " / ".join(g) + "\n")
         else:
-            f.write("未发现近似重复。\n")
-        f.write("\n> 清晰度是整图拉普拉斯方差，背景虚化/大面积纯色会拉低分数；"
-                "亮/暗提示也不代表错误，需结合场景判断。\n")
+            f.write("No near-duplicates found.\n")
+        f.write("\n> Sharpness is whole-frame Laplacian variance; background blur or large flat areas\n"
+                "can lower it. Bright/dark flags are not errors; judge them in context.\n")
 
-    print(f"images={len(rows)} flagged={sum(1 for r in valid if r['flags'] != '正常')} duplicates={len(groups)}")
+    print(f"images={len(rows)} flagged={sum(1 for r in valid if r['flags'] != 'OK')} duplicates={len(groups)}")
     for r in valid:
         print(f"  {r['file']}: sharp={r['sharpness']} mean={r['mean']} {r['flags']}")
     print(f"report -> {args.report}")

@@ -1,69 +1,78 @@
-# 一键美化的上下限（实测记录）
+# Tested limits of one-click beauty
 
-测试集：39 张 Panasonic RW2 + 8 张 JPG，RawTherapee 5.13，Auto-Matched Curve + 三档 look。
-所有指标在同一批照片上实测；输出为 sRGB JPEG。
+Test set: 39 Panasonic RW2 files + 8 JPG files, RawTherapee 5.13,
+Auto-Matched Curve plus three look levels. All numbers were measured on the same
+batch; output is sRGB JPEG.
 
-## 档位
+## Levels
 
-| 档位 | 配置 | 说明 |
+| Level | Profile | Notes |
 | --- | --- | --- |
-| `-rt` | 仅 `Auto-Matched Curve - ISO Low.pp3` | 复刻相机 JPEG；JPG 输入几乎 no-op |
-| `-rt2` | + `rt-look2.pp3`：Contrast 18 / Saturation 12 / Black -5 / 高光 30 / 阴影 20 | 通用默认 |
-| `-rt3` | + `rt-look3.pp3`：Contrast 28 / Saturation 18 / Black -8 / 高光 40 / 阴影 30 | 低饱和场景上限 |
-| `look4` | + `rt-look4.pp3`：Contrast 45 / Saturation 28 / Black -12 / 高光 50 / 阴影 40 | 诊断用，过量 |
+| `-rt` | `Auto-Matched Curve - ISO Low.pp3` only | Camera JPEG emulation; almost a no-op for JPG input |
+| `-rt2` | + `rt-look2.pp3`: Contrast 18 / Saturation 12 / Black -5 / Highlight 30 / Shadow 20 | General default |
+| `-rt3` | + `rt-look3.pp3`: Contrast 28 / Saturation 18 / Black -8 / Highlight 40 / Shadow 30 | Upper bound for low-saturation scenes |
+| `look4` | + `rt-look4.pp3`: Contrast 45 / Saturation 28 / Black -12 / Highlight 50 / Shadow 40 | Diagnostic only; deliberately excessive |
 
-## 全量 47 张
+## Full 47-image set
 
 ```text
-饱和度均值：rt 22.8%  →  rt2 28.6%  →  rt3 31.9%
-rt→rt2：均值 +5.8（范围 +1.9 ~ +9.6）
-rt2→rt3：均值 +3.2（范围 +1.1 ~ +5.5）  ← 收益递减
+Mean saturation: rt 22.8%  →  rt2 28.6%  →  rt3 31.9%
+rt→rt2: mean +5.8 (range +1.9 to +9.6)
+rt2→rt3: mean +3.2 (range +1.1 to +5.5)  ← diminishing returns
 ```
 
-## 分场景（饱和度 %）
+## By scene (saturation %)
 
-| 场景 | rt | rt2 | rt3 | look4 |
+| Scene | rt | rt2 | rt3 | look4 |
 | --- | ---: | ---: | ---: | ---: |
-| 正常城市 P1021913 | 32.1 | 41.1 | 46.4 | 54.8 |
-| 日落剪影 P1021648 | 36.6 | 43.4 | 47.0 | 52.7 |
-| 夜景 P1021774 | 25.8 | 31.8 | 35.3 | 41.1 |
-| 过曝 P1021922 | 2.5 | 5.0 | 6.5 | 9.2 |
-| 饱和红花 P1022126 | 70.6 | 78.6 | 82.2 | 87.2 |
+| Normal city P1021913 | 32.1 | 41.1 | 46.4 | 54.8 |
+| Sunset silhouette P1021648 | 36.6 | 43.4 | 47.0 | 52.7 |
+| Night P1021774 | 25.8 | 31.8 | 35.3 | 41.1 |
+| Overexposed P1021922 | 2.5 | 5.0 | 6.5 | 9.2 |
+| Saturated red flower P1022126 | 70.6 | 78.6 | 82.2 | 87.2 |
 
-红花任何通道裁切：rt 0.6% → rt2 4.2% → rt3 7.1% → look4 11.9%。
+Red-flower channel clipping: rt 0.6% → rt2 4.2% → rt3 7.1% → look4 11.9%.
 
-过曝片近白像素：rt 57.6% → rt2 53.9% → rt3 51.0% → look4 49.6%，仍不可用。
+Near-white pixels in the overexposed frame: rt 57.6% → rt2 53.9% → rt3 51.0%
+→ look4 49.6%; still unusable.
 
-## 上下限判定
+## Limits
 
-**下限 = 相机匹配**
-- JPG 输入基本不变（P1021642 饱和 15.0→14.8）；
-- RAW 只还原相机色彩，不增加创作感。
+**Lower bound = camera match**
 
-**安全上限 = 通道开始裁切之前**
-- 低饱和场景（阴天、城市、雾天）可用到 rt3；
-- 已饱和主体（红花、霓虹、肤色）在 rt2/rt3 就开始丢通道细节；
-- look4 会明显过饱和，只用于说明“再推会坏”。
+- JPG input barely changes (P1021642 saturation 15.0 → 14.8);
+- RAW restores camera color but adds little creative intent.
 
-**绝对上限**
-- 过曝/死黑无法恢复：P1021922 无论哪档近白仍 ≥51%；
-- 剪影、夜景、强背光需要人的意图，全局 auto 会平均化；
-- JPG 已压过动态范围，比 RAW 更早死白；
-- 分辨率/细节不会增加，只是影调与色彩变化。
+**Safe upper bound = before channels start clipping**
 
-## 决策矩阵
+- Low-saturation scenes (overcast, city, fog) can take rt3;
+- Already-saturated subjects (red flowers, neon, skin) start losing channel
+  detail at rt2/rt3;
+- look4 is visibly over-saturated; it exists to show where it breaks.
 
-| 场景 | 建议 |
+**Absolute limits**
+
+- Overexposure/crushed blacks cannot be recovered: P1021922 stays ≥51% near-white
+  at every level;
+- Silhouettes, night scenes and strong backlight need human intent; global auto
+  averages them out;
+- JPG already compressed dynamic range and clips earlier than RAW;
+- Resolution/detail never increases; only tone and color change.
+
+## Decision matrix
+
+| Scene | Recommendation |
 | --- | --- |
-| 正常日光、城市、阴天 | `-rt2` 默认；低饱和可用 `-rt3` |
-| 日落/夜景/剪影 | `-rt2` 上限，保留氛围；不要提亮阴影 |
-| 花色/霓虹/肤色 | `-rt` 或 `-rt2`，先检查通道裁切 |
-| 过曝/欠曝 | 不自动；单独手动曝光修正 |
-| JPG 输入 | 预期收益小；要明显变化需 look2，但注意死白 |
+| Normal daylight, city, overcast | `-rt2` default; `-rt3` for low saturation |
+| Sunset/night/silhouette | `-rt2` upper bound; keep the mood; do not lift shadows |
+| Flowers/neon/skin | `-rt` or `-rt2`; check channel clipping first |
+| Over/under-exposed | Do not auto-fix; correct exposure manually |
+| JPG input | Expect small gains; look2 changes more but watch clipped whites |
 
-## 使用规则
+## Rules of use
 
-1. 先体检，再选档；异常只报告，不自动修。
-2. 批量前跑 1–3 张试样，确认饱和主体没崩。
-3. 每批输出新后缀（`-rt2`/`-rt3`），保留旧版对比。
-4. 报告里写清“哪些是场景本身（亮天空/夜景/剪影），哪些是曝光异常”。
+1. Check first, choose a level second; anomalies are reported, not auto-fixed.
+2. Run 1–3 samples before a batch and confirm saturated subjects survive.
+3. Use a new suffix per batch (`-rt2`/`-rt3`) and keep the previous version for comparison.
+4. State clearly in the report which looks are scene-intent (bright sky, night,
+   silhouette) and which are exposure anomalies.

@@ -1,40 +1,44 @@
-# Photo Auto Beautify · 本地免费批量图片美化
+# Photo Auto Beautify · Local, free batch photo beautification
 
-> 不订阅、不上传、不逐张修图：一条命令把整批 RAW/JPG/HEIC 出成可交付成片。
+> No subscription, no uploads, no one-by-one editing: one command turns a whole
+> batch of RAW/JPG/HEIC files into deliverable results.
 
-纯命令行照片流水线 skill：正常片自动美化，明显问题生成修正候选并询问，疑似问题只给建议。
+A shell-only photo pipeline skill. Normal photos are beautified automatically;
+obvious problems produce a fixed candidate for confirmation; suspect images get
+suggestions only.
 
-- 默认中档美化；`--strength min/medium/max` 可选最低/最高档。
-- RAW 正常片输出与 RAW 同名的 JPG；其他格式输出 `<原名>-beauty.jpg`。
-- 明显过曝/欠曝：保留原图，生成 `<原名>-fixed.jpg`，由用户确认是否保留。
-- 疑似问题/整图模糊：只给建议，不生成文件。
-- 最终只保留原图 + 美化文件 + 修正候选；预览/暂存会清理。
-- **默认不覆盖原图**；仅在用户明确要求时用 `--overwrite-originals`（只对 JPG/JPEG 正常片生效，RAW 与其他格式仍保留原文件）。
+- Default medium beauty; `--strength min/medium/max` selects the level.
+- Normal RAW → a JPG with the same name; other formats → `<name>-beauty.jpg`.
+- Obvious over/under-exposure → keep the original, write `<name>-fixed.jpg`, ask first.
+- Suspect or blurred images → suggestions only, no file.
+- Final state: originals + beauty files + fixed candidates; previews/temp removed.
+- **Originals are never overwritten by default.** `--overwrite-originals` is an
+  explicit, dangerous opt-in for normal JPG/JPEG only; RAW and other formats stay intact.
 
-## 支持格式
+## Supported formats
 
-RAW（RW2/DNG/CR2/CR3/NEF/ARW/RAF/ORF/PEF/SRW 等）、JPEG、PNG、TIFF、
-WebP、AVIF、HEIC/HEIF、JPEG XL、BMP、GIF（首帧）；输出统一 JPEG。
-HEIC 需要 `pillow-heif`，JXL 需要 `ffmpeg`（libjxl）。
+RAW (RW2/DNG/CR2/CR3/NEF/ARW/RAF/ORF/PEF/SRW, and more), JPEG, PNG, TIFF,
+WebP, AVIF, HEIC/HEIF, JPEG XL, BMP, GIF (first frame); output is always JPEG.
+HEIC needs `pillow-heif`; JXL needs `ffmpeg` (libjxl).
 
-## 依赖
+## Requirements
 
-- Python 3 + Pillow + NumPy + OpenCV（人脸/选片/格式转换）
-- `pillow-heif`（HEIC/HEIF），`ffmpeg`（JPEG XL）
-- RawTherapee 5.13 便携版（GPLv3，`scripts/setup-rt.ps1` 下载）
-- 可选：RAWmakase（RAW 预览与过曝修正）
+- Python 3 + Pillow + NumPy + OpenCV (face/culling/format conversion)
+- `pillow-heif` for HEIC/HEIF; `ffmpeg` for JPEG XL
+- RawTherapee 5.13 portable (GPLv3, downloaded by `scripts/setup-rt.ps1`)
+- Optional: RAWmakase (RAW previews and overexposure correction)
 
-## 安装与使用
+## Install and use
 
-仓库发布到 GitHub 后：
+From GitHub:
 
 ```bash
-npx skills add <owner>/photo-auto-beautify
+npx skills add kingforder/photo-auto-beautify
 ```
 
-或手动复制 `skills/photo-auto-beautify/` 到 agent 的 skills 目录。
+Or copy `skills/photo-auto-beautify/` into your agent's skills directory.
 
-Windows 示例：
+Windows example:
 
 ```powershell
 $env:PYTHONPATH = "..\face-deps"
@@ -43,15 +47,17 @@ python scripts\photo-pipeline.py --input "C:\photos" --output-dir "C:\photos" `
   --report "C:\photos\pipeline-report.md"
 ```
 
-## 许可证
+Chinese readers: see the [Chinese README](../../README.zh-CN.md).
 
-- 本项目原创代码、脚本、文档、look 配置：**0BSD**（见 `LICENSE`）。
-- 内置 YuNet 模型：**MIT**（见 `assets/models/LICENSE`）。
-- RawTherapee：**GPLv3**，仅按需下载，不随本仓库分发。
-- OpenCV / NumPy / Pillow / Python：各自许可证，运行时安装。
+## License
 
-详见 `THIRD_PARTY_NOTICES.md`。
+- Original code, scripts, docs and look profiles: **0BSD** (see `LICENSE`).
+- Bundled YuNet model: **MIT** (see `assets/models/LICENSE`).
+- RawTherapee: **GPLv3**, downloaded on demand, not bundled.
+- OpenCV / NumPy / Pillow / Python: their own licenses.
 
-## 隐私
+See `THIRD_PARTY_NOTICES.md`.
 
-人脸处理与照片分析全部本地完成，不上传照片或人脸数据。
+## Privacy
+
+All face and photo processing is local. No photos or face data are uploaded.

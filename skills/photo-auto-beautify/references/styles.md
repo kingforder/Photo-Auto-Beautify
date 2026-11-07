@@ -1,66 +1,74 @@
-# 风格预设与实测边界
+# Style presets and tested boundaries
 
-测试图：Wikimedia Commons 的 CC BY-SA 4.0 样图（雾景、建筑、食物），以及用户测试集里的夜景/人像。
-仅本地测试，不随 skill 分发原图。
+Test images: CC BY-SA 4.0 samples from Wikimedia Commons (fog, architecture,
+food) plus night/portrait frames from the user's test set. Local tests only; the
+original images are not distributed with this skill.
 
-## 黑白
+## Black and white
 
-`assets\looks\rt-bw.pp3`（自写 Desaturation 配置，不复制 RawTherapee 的 GPL 配置）
+`assets\looks\rt-bw.pp3` (our own Desaturation profile, not a copied RawTherapee
+GPL profile)
 
 ```powershell
 powershell -File scripts\rt-batch.ps1 -InputDir $dir -Suffix "-bw" `
   -ProfileOnly -LookProfile assets\looks\rt-bw.pp3
 ```
 
-- 建筑、纪实、硬光人像效果好；
-- 高光片可能偏亮，批量前看一张；
-- 不要和 Auto-Matched 叠（会二次改曲线），所以用 `-ProfileOnly`。
+- Works well for architecture, documentary and hard-light portraits;
+- Bright frames may look too light; inspect one before batching;
+- Do not stack it with Auto-Matched (that would add a second tone curve), hence
+  `-ProfileOnly`.
 
-## 去雾
+## Dehaze
 
-- `assets\looks\rt-dehaze.pp3`：Strength 55 / Depth 45 / Saturation 25，轻微；
-- `assets\looks\rt-dehaze-strong.pp3`：Strength 85 / Depth 60 / Saturation 30，更强。
+- `assets\looks\rt-dehaze.pp3`: Strength 55 / Depth 45 / Saturation 25, light;
+- `assets\looks\rt-dehaze-strong.pp3`: Strength 85 / Depth 60 / Saturation 30, stronger.
 
 ```powershell
 powershell -File scripts\rt-batch.ps1 -InputDir $dir -Suffix "-dehaze" `
   -ProfileOnly -LookProfile assets\looks\rt-dehaze.pp3
 ```
 
-实测：JPG 雾景上效果偏温和，主要提升前景对比；RAW 的余量更大。强档会把天空压暗，先试样。
-去雾不是“换天”，不能恢复被雾完全遮住的远景细节。
+Tested: mild on JPG fog scenes, mostly improving foreground contrast; RAW has
+more headroom. The strong version darkens the sky, so sample first. Dehaze is
+not sky replacement and cannot restore detail fully hidden by fog.
 
-## 夜景 / 低光
+## Night / low light
 
-用较高 ISO 的降噪配置，再叠 look2：
+Use a higher-ISO denoise profile, then add look2:
 
 ```powershell
 powershell -File scripts\rt-batch.ps1 -InputDir $dir -Suffix "-night" `
   -IsoProfile High -LookProfile assets\looks\rt-look2.pp3
 ```
 
-- 实测夜景 JPG：灯光高光保持，暗部噪点降低；
-- 强降噪会抹掉细节，人像/纹理多的场景用 Medium；
-- 不要用去雾或强对比处理夜景，容易把天空压死。
+- Tested on a night JPG: light highlights preserved, shadow noise reduced;
+- Strong denoise removes detail; use Medium for portraits/textured scenes;
+- Do not add dehaze or heavy contrast to night scenes; it crushes the sky.
 
-## 食物 / 高调静物
+## Food / high-key still life
 
-- 推荐：`-LookProfile assets\looks\rt-look2.pp3`（对比/饱和适中）；
-- **不要用 Pop 1**：实测白色盘子直接过曝，高光丢失；
-- 食物通常需要更暖的白平衡，可在 RT 里单独调 Temperature/Tint，不建议全局预设硬套。
+- Recommended: `-LookProfile assets\looks\rt-look2.pp3` (moderate contrast/saturation);
+- **Do not use Pop 1**: tested white plates clipped immediately and highlights were lost;
+- Food often needs a warmer white balance; adjust Temperature/Tint in RT rather
+  than forcing a global preset.
 
-## 建筑 / 透视
+## Architecture / perspective
 
-- 目前没有可靠的纯 CLI 自动透视校正；RawTherapee GUI 有 Perspective → Automatic，需要目视确认；
-- 可以用 `-ProfileOnly -LookProfile rt-look2.pp3` 做基础影调，透视留给人手；
-- 镜头畸变/暗角可由 Auto-Matched 配置里的 LensProfile 处理。
+- There is no reliable fully automatic CLI perspective correction yet;
+  RawTherapee's GUI has Perspective → Automatic, which needs visual confirmation;
+- `-ProfileOnly -LookProfile rt-look2.pp3` can handle base tone; leave perspective
+  to a human;
+- Lens distortion/vignetting can be handled by the LensProfile in an
+  Auto-Matched profile.
 
-## 结论
+## Summary
 
-| 需求 | 可自动化 | 建议 |
+| Need | Automatable | Recommendation |
 | --- | --- | --- |
-| 黑白 | 是 | `rt-bw.pp3`，ProfileOnly |
-| 去雾 | 部分 | 轻档先试，强档谨慎 |
-| 夜景降噪 | 是 | ISO High/Medium + look2 |
-| 食物 | 部分 | look2；不要 Pop 1 |
-| 建筑透视 | 否（需目视） | GUI/手动 |
-| 换天/生成式 | 否 | 不在本 skill 范围 |
+| B&W | Yes | `rt-bw.pp3`, ProfileOnly |
+| Dehaze | Partial | Try light first; be careful with strong |
+| Night denoise | Yes | ISO High/Medium + look2 |
+| Food | Partial | look2; avoid Pop 1 |
+| Architecture perspective | No (visual check) | GUI/manual |
+| Sky replacement/generative | No | Out of scope |

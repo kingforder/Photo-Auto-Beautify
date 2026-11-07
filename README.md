@@ -1,9 +1,10 @@
 # Photo Auto Beautify
 
 **Local, free, batch photo beautification for AI agents.**
-不订阅、不上传、不逐张修图：一条命令把整批 RAW/JPG/HEIC 出成可交付成片。
 
-A shell-only photo pipeline skill for AI agents. It triages a folder into
+**English** | [中文](README.zh-CN.md)
+
+A shell-only photo pipeline skill. It triages a folder into
 **normal / obvious problem / suspect**, then:
 
 - beautifies normal photos at medium strength by default;
@@ -11,16 +12,16 @@ A shell-only photo pipeline skill for AI agents. It triages a folder into
 - only reports suggestions for suspect or unrepairable images;
 - removes previews and temporary files, leaving originals + results.
 
-Built for RAW and mainstream raster formats (JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL),
-with scene-aware presets (portrait / night / high-key / landscape / general),
-optional face smoothing, and no full-frame generative edits.
+Built for RAW and mainstream raster formats (JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL/
+BMP/GIF), with scene-aware presets (portrait / night / high-key / landscape /
+general), optional face smoothing, and no full-frame generative edits.
 
 ## Install
 
 Published through [skills.sh](https://www.skills.sh):
 
 ```bash
-npx skills add <owner>/photo-auto-beautify
+npx skills add kingforder/photo-auto-beautify
 ```
 
 Or copy `skills/photo-auto-beautify/` into your agent's skills directory.
@@ -56,7 +57,7 @@ python "$Skill\scripts\photo-pipeline.py" `
 
 - `--strength min|medium|max` — default medium.
 - `--dry-run` — plan only, no output.
-- Normal RAW → `<name>.jpg`; normal JPEG → `<name>-beauty.jpg`.
+- Normal RAW → `<name>.jpg`; other normal formats → `<name>-beauty.jpg`.
 - Obvious → `<name>-fixed.jpg`; ask the user before keeping it.
 - Suspect/blur → no file, only suggestions.
 
@@ -86,7 +87,8 @@ for the full policy, scene table and limits.
 │   └── references/
 ├── LICENSE
 ├── THIRD_PARTY_NOTICES.md
-└── README.md
+├── README.md
+└── README.zh-CN.md
 ```
 
 ## License

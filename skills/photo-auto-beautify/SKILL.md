@@ -1,64 +1,69 @@
 ---
 name: photo-auto-beautify
-description: 本地运行的免费批量图片美化：无需上传、无需订阅；自动分诊、场景调色、人像与风格化、选片、多格式，一条命令处理整批照片并保留原图。
+description: Local, free batch photo beautification: no uploads, no subscription; triage, scene-aware color, portrait and style presets, culling, and mainstream formats; one command per batch, originals preserved.
 license: 0BSD
 ---
 
 # Photo Auto Beautify
 
-把一批照片从“原片”整理成“可交付结果”：先判断状态，再决定直接出片、生成修正候选，还是只给建议。默认中档美化，原图不修改，最终只保留原图和结果。
+Turn a folder of originals into deliverable results: triage first, then either
+beautify, produce a fixed candidate, or suggest only. The default is a medium
+look; originals are never modified; only originals and results remain.
 
-## 能力地图
+## Capability map
 
-| 方向 | 状态 | 说明 |
+| Area | Status | Notes |
 | --- | --- | --- |
-| 自动分诊 | 稳定 | 正常 / 明显问题 / 疑似问题；整图模糊单独提示 |
-| 曝光与色彩 | 稳定 | 自动白平衡、曝光、高光/阴影、对比、饱和；三档强度 |
-| 场景感知 | 规则版 | 人像、夜景、高调、风景、通用；按场景选预设 |
-| 人像 | 保守版 | 皮肤平滑、眼白/牙齿轻微提亮；不瘦脸、不改五官 |
-| 风格化 | 可扩展 | 黑白、去雾、夜景、食物；look 配置可继续增加 |
-| 选片 | 稳定 | 模糊、曝光异常、近似重复；只报告不删图 |
-| 格式 | 广泛 | RAW、JPEG、PNG、TIFF、WebP、AVIF、HEIC/HEIF、JXL、BMP、GIF |
-| 交付 | 稳定 | 原图保护、统一命名、修正候选确认、清理中间产物 |
-| 扩展性 | 设计目标 | 新场景、新风格、新检测器以脚本/配置接入，不改主流程 |
+| Triage | Stable | Normal / obvious problem / suspect; whole-frame blur is flagged separately |
+| Exposure and color | Stable | Auto white balance, exposure, highlights/shadows, contrast, saturation; three strengths |
+| Scene awareness | Rule-based | Portrait, night, high-key, landscape, general; picks a preset per scene |
+| Portrait | Conservative | Skin smoothing, slight sclera/teeth brightening; no face reshaping |
+| Styles | Extensible | B&W, dehaze, night, food; more looks can be added |
+| Culling | Stable | Blur, exposure outliers, near-duplicates; reports only, never deletes |
+| Formats | Broad | RAW, JPEG, PNG, TIFF, WebP, AVIF, HEIC/HEIF, JXL, BMP, GIF |
+| Delivery | Stable | Original protection, consistent naming, fixed-candidate confirmation, cleanup |
+| Extensibility | Design goal | New scenes, styles and detectors plug in through scripts/config |
 
-## 可扩展方向（路线图，非承诺）
+## Roadmap (not a commitment)
 
-- **透视与镜头**：建筑垂直校正、镜头畸变/暗角/色差。
-- **HDR 与包围**：合成、去重影、高光/阴影融合。
-- **修复与增强**：老照片修复、超分、降噪、去划痕。
-- **主体与背景**：人像/产品分割、背景替换、虚化。
-- **语义场景**：更细的美食、房产、活动、舞台、街拍识别。
-- **交付工具**：水印、批量重命名、元数据、联系表、多尺寸导出。
+- **Perspective and lens**: vertical correction for architecture, distortion, vignetting, chromatic aberration.
+- **HDR and bracketing**: merge, deghost, highlight/shadow fusion.
+- **Restoration and enhancement**: old-photo repair, upscaling, denoising, scratch removal.
+- **Subject and background**: portrait/product segmentation, background replacement, blur.
+- **Semantic scenes**: finer recognition of food, real estate, events, stage, street.
+- **Delivery tools**: watermarks, batch rename, metadata, contact sheets, multi-size export.
 
-这些方向不改变当前原则：**原图保留、结果可追溯、异常先提示**。实际可用性以脚本和参考文档为准。
+These directions do not change the current principles: **originals preserved,
+results traceable, anomalies surfaced first**. Availability depends on the actual
+scripts and references.
 
-## 默认策略
+## Default policy
 
-| 分类 | 处理 |
+| Class | Action |
 | --- | --- |
-| 正常 | 默认中档美化；用户声明最低/最高时用 `min`/`max` |
-| 明显问题 | 保留原图，生成 `<原名>-fixed.jpg` 候选，再询问是否保留 |
-| 疑似问题 | 只给建议，不生成文件 |
-| 明显但无法修复 | 整图模糊等只提示重拍/检查对焦 |
+| Normal | Medium beauty by default; `min`/`max` when the user asks |
+| Obvious problem | Keep the original, write a `<name>-fixed.jpg` candidate, then ask |
+| Suspect | Suggestions only; no file |
+| Obvious but unrepairable | Whole-frame blur etc.; recommend a reshoot or focus check |
 
-输出命名：
+Output naming:
 
-- RAW 正常片 → `<原名>.jpg`（与 RAW 同名）
-- 其他格式正常片 → `<原名>-beauty.jpg`
-- 明显问题 → `<原名>-fixed.jpg`
-- 最终只留原图 + 美化文件 + 修正候选；预览/暂存清理
+- Normal RAW → `<name>.jpg` (same name as the RAW)
+- Other normal formats → `<name>-beauty.jpg`
+- Obvious problem → `<name>-fixed.jpg`
+- Final state: originals + beauty files + fixed candidates only; previews/temp removed
 
-**默认绝不覆盖原图。** 只有用户明确要求并接受不可逆后果时，才加
-`--overwrite-originals`：
+**Originals are never overwritten by default.** Only when the user explicitly
+insists and accepts the irreversible result should you add
+`--overwrite-originals`:
 
-- 仅普通 JPG/JPEG 正常片写回原路径；
-- RAW 仍保留原片，只生成同名 `.jpg`；
-- PNG/WebP/HEIC/JXL 仍生成 `-beauty.jpg`，不改原文件；
-- `*-fixed.jpg` 仍是待确认候选，不自动覆盖；
-- 建议先备份；不要默认开启。
+- normal JPG/JPEG only, written back in place;
+- RAW stays untouched and still produces `<name>.jpg`;
+- PNG/WebP/HEIC/JXL still produce `-beauty.jpg` and are never overwritten;
+- `*-fixed.jpg` remains a candidate and is never auto-applied;
+- back up first; never enable it by default.
 
-## 快速开始
+## Quick start
 
 ```powershell
 python scripts\photo-pipeline.py `
@@ -67,31 +72,32 @@ python scripts\photo-pipeline.py `
   --report "C:\photos\pipeline-report.md"
 ```
 
-- `--dry-run`：只输出分诊计划；
-- `--temp-dir`：受限环境指定可写临时目录；
-- `--overwrite-originals`：危险选项，只在用户强烈要求时用于 JPG/JPEG；
-- 跑完先看报告，再确认 `*-fixed.jpg` 是否保留。
+- `--dry-run`: plan only;
+- `--temp-dir`: writable temp folder for restricted environments;
+- `--overwrite-originals`: dangerous, JPG/JPEG only, explicit user request only;
+- read the report and confirm `*-fixed.jpg` before keeping it.
 
-## 场景与风格
+## Scenes and styles
 
-- 场景：`portrait` / `night` / `highkey` / `landscape` / `general`；
-- 人像自动附带皮肤平滑，强度随档位；
-- 风格：黑白、轻/强去雾、夜景、食物；配置在 `assets/looks/`，可继续扩展；
-- 主流水线默认只套场景 look；黑白/去雾等实验风格通过 `rt-batch.ps1` 或 `assets/looks/` 单独调用，不自动混入；
-- 黑白/去雾使用 `-ProfileOnly`，避免二次改曲线。
+- Scenes: `portrait`, `night`, `highkey`, `landscape`, `general`;
+- Portraits include skin smoothing; strength follows the selected level;
+- Styles: B&W, light/strong dehaze, night, food; looks live in `assets/looks/`;
+- The main pipeline only applies the scene look; B&W/dehaze are invoked
+  separately through `rt-batch.ps1` or the look profiles and are not mixed in;
+- B&W/dehaze use `-ProfileOnly` to avoid a second tone-curve pass.
 
-## 边界
+## Boundaries
 
-- 不做瘦脸、换脸、换天、生成式改写；
-- 过曝/死黑/严重模糊不能无中生有；
-- 场景识别是规则版，不等于语义理解；
-- 人脸、风景、夜景等具体限制见 `references/`。
+- No face reshaping, face swap, sky replacement, or generative rewriting;
+- Clipped highlights, crushed blacks, and severe blur cannot be invented;
+- Scene detection is rule-based, not semantic understanding;
+- Detailed limits live in `references/`.
 
-## 参考
+## References
 
-- `references/limits.md`：强度上下限与决策矩阵
-- `references/portrait.md`：人像能力与限制
-- `references/styles.md`：黑白/去雾/夜景/食物
-- `references/formats.md`：输入格式与依赖
-- `scripts/photo-pipeline.py`：主流水线
-- `LICENSE` / `THIRD_PARTY_NOTICES.md`：0BSD 与第三方许可
+- `references/limits.md`: tested strength limits and decision matrix
+- `references/portrait.md`: portrait capabilities and limits
+- `references/styles.md`: B&W, dehaze, night, food
+- `references/formats.md`: input formats and dependencies
+- `scripts/photo-pipeline.py`: main pipeline
+- `LICENSE` / `THIRD_PARTY_NOTICES.md`: 0BSD and third-party licenses

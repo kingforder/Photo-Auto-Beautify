@@ -256,7 +256,7 @@ def main():
             src = r.get("working") or r["src"]
             m, cls = r["m"], r["class"]
             if cls == "error":
-                r["note"] = r.get("error", "读取/转换失败")
+                r["note"] = r.get("error", "read/convert failed")
                 r["action"] = "suggest"
                 continue
             if cls == "ok":
@@ -271,7 +271,7 @@ def main():
                 else:
                     shutil.copy2(tmp_out, dst)
                 if os.path.abspath(dst) == os.path.abspath(r["src"]):
-                    r["note"] = (r["note"] + "；覆盖原图（不可逆）").lstrip("；")
+                    r["note"] = (r["note"] + "; original overwritten (irreversible)").lstrip("; ")
                 r["action"] = "beauty"
                 r["output"] = dst
             elif cls in ("obvious_over", "obvious_under"):
@@ -283,61 +283,61 @@ def main():
                 r["action"] = "fixed"
                 r["output"] = dst
             elif cls == "obvious_blur":
-                r["note"] = "整图模糊，无法可靠修复；建议重拍/检查对焦"
+                r["note"] = "Whole-frame blur; cannot repair reliably. Reshoot or check focus."
                 r["action"] = "suggest"
             else:
                 reasons = []
                 if m["hot"] >= 3:
-                    reasons.append("高光偏多")
+                    reasons.append("Highlights clipped")
                 if m["mean"] <= 55 and m["dark"] >= 8:
-                    reasons.append("偏暗/夜景/剪影")
+                    reasons.append("Dark/night/silhouette")
                 if m["range"] <= 55:
-                    reasons.append("低对比")
+                    reasons.append("Low contrast")
                 if m["sharp"] < median_sharp * 0.45:
-                    reasons.append("清晰度偏低")
-                r["note"] = "、".join(reasons) or "统计上偏离"
+                    reasons.append("Low sharpness")
+                r["note"] = ", ".join(reasons) or "Statistical outlier"
                 r["action"] = "suggest"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
     with open(args.report, "w", encoding="utf-8-sig") as f:
-        f.write("# 自动美化流水线报告\n\n")
-        f.write(f"输入：{args.input}\n\n档位：{args.strength}\n\n")
-        f.write("## 正常图片（已美化）\n\n")
-        f.write("| 原图 | 场景 | 输出 | 备注 |\n| --- | --- | --- | --- |\n")
+        f.write("# Auto beautify pipeline report\n\n")
+        f.write(f"Input: {args.input}\n\nStrength: {args.strength}\n\n")
+        f.write("## Normal photos (beautified)\n\n")
+        f.write("| Original | Scene | Output | Notes |\n| --- | --- | --- | --- |\n")
         for r in rows:
             if r["action"] in ("beauty",) or (args.dry_run and r["class"] == "ok"):
                 out = os.path.basename(r["output"]) if r["output"] else "(dry-run)"
                 f.write(f"| {r['file']} | {r['scene']} | {out} | {r['note']} |\n")
-        f.write("\n## 明显问题（已生成修正文件，待你确认）\n\n")
-        f.write("| 原图 | 问题 | 修正文件 | 方式 |\n| --- | --- | --- | --- |\n")
+        f.write("\n## Obvious problems (fixed candidates, waiting for confirmation)\n\n")
+        f.write("| Original | Issue | Fixed file | Method |\n| --- | --- | --- | --- |\n")
         for r in rows:
             if r["class"] in ("obvious_over", "obvious_under"):
                 f.write(f"| {r['file']} | {r['class']} | {os.path.basename(r['output']) if r['output'] else '(dry-run)'} | {r['note']} |\n")
         if any(r["class"] in ("obvious_over", "obvious_under") for r in rows):
-            f.write("\n请确认这些 `*-fixed.jpg` 是否保留；确认前不要删除原图。\n")
-        f.write("\n## 明显问题但无法自动修复\n\n")
-        f.write("| 原图 | 场景 | 建议 |\n| --- | --- | --- |\n")
+            f.write("\nConfirm whether to keep these `*-fixed.jpg` files; do not delete the originals before confirming.\n")
+        f.write("\n## Obvious problems that cannot be auto-fixed\n\n")
+        f.write("| Original | Scene | Suggestion |\n| --- | --- | --- |\n")
         for r in rows:
             if r["class"] == "obvious_blur":
                 f.write(f"| {r['file']} | {r['scene']} | {r['note']} |\n")
-        f.write("\n## 疑似问题（只给建议，未生成文件）\n\n")
-        f.write("| 原图 | 场景 | 疑点/建议 |\n| --- | --- | --- |\n")
+        f.write("\n## Suspect images (suggestions only, no files)\n\n")
+        f.write("| Original | Scene | Concern / suggestion |\n| --- | --- | --- |\n")
         for r in rows:
             if r["action"] == "suggest" and r["class"] not in ("obvious_blur", "error"):
                 f.write(f"| {r['file']} | {r['scene']} | {r['note']} |\n")
-        f.write("\n## 读取/转换失败\n\n")
-        f.write("| 原图 | 原因 |\n| --- | --- |\n")
+        f.write("\n## Read/convert failures\n\n")
+        f.write("| Original | Reason |\n| --- | --- |\n")
         for r in rows:
             if r["class"] == "error":
                 f.write(f"| {r['file']} | {r.get('error') or r['note']} |\n")
-        f.write("\n## 方案说明\n\n")
-        f.write("- 正常图片默认 look2；`--strength min/max` 切换 look1/look3。\n")
-        f.write("- 人像自动加皮肤平滑（强度随档位 1/2/3），不做瘦脸。\n")
-        f.write("- 夜景用 ISO High + look2；高调/食物用 look2。\n")
-        f.write("- 非 RAW/JPEG/PNG/TIFF 先归一化为工作 TIFF；明显过曝的 RAW 用 RAWmakase XMP -2.5EV。\n")
-        f.write("- 默认不覆盖；`--overwrite-originals` 仅对 JPG/JPEG 正常片生效，其余格式保留原文件。\n")
-        f.write("- 疑似问题不生成任何文件；中间预览/暂存已清理。\n")
+        f.write("\n## Plan\n\n")
+        f.write("- Normal photos use look2 by default; `--strength min/max` switches to look1/look3.\n")
+        f.write("- Portraits add skin smoothing (level 1/2/3); no face reshaping.\n")
+        f.write("- Night uses ISO High + look2; high-key/food use look2.\n")
+        f.write("- Non-RAW/JPEG/PNG/TIFF inputs are normalized to a working TIFF; obvious overexposed RAW uses RAWmakase XMP -2.5EV.\n")
+        f.write("- No overwrite by default; `--overwrite-originals` applies only to normal JPG/JPEG; other formats keep their originals.\n")
+        f.write("- Suspect images produce no files; previews and temporary files are cleaned up.\n")
 
     print(f"processed={len(rows)} report={args.report}")
     for r in rows:

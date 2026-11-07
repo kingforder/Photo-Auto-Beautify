@@ -33,7 +33,7 @@ if ($LookProfile -and -not (Test-Path $LookProfile)) { throw "Look profile not f
 if (-not $OutputDir) { $OutputDir = $InputDir }
 New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 
-# RawTherapee cannot reliably write non-ASCII or long paths (e.g. 中文目录).
+# RawTherapee cannot reliably write non-ASCII or long paths (e.g. Chinese folder names).
 # Render to a short ASCII staging folder, then copy into place.
 $staging = Join-Path $env:TEMP 'rtb'
 if (Test-Path $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
