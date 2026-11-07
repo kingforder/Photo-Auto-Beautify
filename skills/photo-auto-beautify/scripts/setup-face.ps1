@@ -17,7 +17,14 @@ $hasCv2 = $false
 & $py -c "import cv2" 2>$null
 if ($LASTEXITCODE -eq 0) { $hasCv2 = $true }
 $hasHeif = $false
-& $py -c "import pillow_heif" 2>$null
+$heifCheck = @"
+import glob, os
+for p in glob.glob(r'$DepsDir\pillow_heif-*.data\platlib'):
+    try: os.add_dll_directory(p)
+    except Exception: pass
+import pillow_heif
+"@
+& $py -c $heifCheck 2>$null
 if ($LASTEXITCODE -eq 0) { $hasHeif = $true }
 
 if (-not $hasCv2 -or -not $hasHeif) {
