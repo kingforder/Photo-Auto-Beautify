@@ -8,8 +8,9 @@ A shell-only photo pipeline skill for AI agents. It triages a folder into
 - only reports suggestions for suspect or unrepairable images;
 - removes previews and temporary files, leaving originals + results.
 
-Built for RAW and JPEG, with scene-aware presets (portrait / night / high-key /
-landscape / general), optional face smoothing, and no full-frame generative edits.
+Built for RAW and mainstream raster formats (JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL),
+with scene-aware presets (portrait / night / high-key / landscape / general),
+optional face smoothing, and no full-frame generative edits.
 
 ## Install
 
@@ -33,6 +34,7 @@ claude --plugin-dir .
 
 - Windows 10/11, PowerShell
 - Python 3.10+ with Pillow, NumPy, OpenCV
+- `pillow-heif` for HEIC/HEIF, `ffmpeg` (libjxl) for JPEG XL
 - RawTherapee 5.13 portable (downloaded by `scripts/setup-rt.ps1`, GPLv3)
 - Optional: RAWmakase (MIT) for RAW previews and overexposure correction
 

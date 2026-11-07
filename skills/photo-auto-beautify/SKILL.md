@@ -1,6 +1,6 @@
 ---
 name: photo-auto-beautify
-description: 批量美化 RAW/JPG 照片：正常片按中档自动美化，明显问题自动生成修正候选并询问，疑似问题只给建议；纯命令行，保留原图，不保留中间结果。
+description: 批量美化主流格式照片（RAW/JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL）：正常片按中档自动美化，明显问题自动生成修正候选并询问，疑似问题只给建议；纯命令行，保留原图，不保留中间结果。
 license: 0BSD
 ---
 
@@ -38,6 +38,20 @@ license: 0BSD
 - 异常体检可选依赖 RAWmakase（用于把 RAW 渲染成小预览）：
   `%LOCALAPPDATA%\Programs\RAWmakase\rawmakase.exe`。
 - Python 3 + Pillow + numpy + OpenCV（体检/人像/选片脚本）。
+
+## 支持格式
+
+| 输入 | 解码 |
+| --- | --- |
+| RAW（RW2/DNG/CR2/CR3/NEF/ARW/RAF/ORF/PEF/SRW/…） | RawTherapee |
+| JPEG / PNG / TIFF | RawTherapee |
+| WebP / AVIF / BMP | Pillow → 工作 TIFF |
+| HEIC / HEIF | pillow-heif → 工作 TIFF（需安装） |
+| JPEG XL (.jxl) | ffmpeg（libjxl）→ 工作 TIFF（需 ffmpeg） |
+
+输出统一 JPEG。RAW 正常片输出 `<原名>.jpg`，其他格式输出 `<原名>-beauty.jpg`；
+明显问题输出 `<原名>-fixed.jpg`。缺少 HEIC/JXL 解码器时只记录“读取/转换失败”，
+不会中断整批。详见 [references/formats.md](references/formats.md)。
 
 ## 默认流水线（推荐）
 
@@ -228,6 +242,7 @@ RapidRAW v1.6.7 的 `export` CLI 只有 `--output/--format/--quality/--tiff-bit-
 ## 文件
 
 - `scripts\photo-pipeline.py`：三分类 + 自动美化/修正候选 + 报告。
+- `scripts\image_formats.py`：RAW/JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL 输入归一化。
 - `scripts\rt-batch.ps1`：批量渲染（支持叠加 look）。
 - `scripts\render-previews.ps1`：RAW → 小预览（检测用）。
 - `scripts\check-images.py`：指标与异常报告。
@@ -238,6 +253,7 @@ RapidRAW v1.6.7 的 `export` CLI 只有 `--output/--format/--quality/--tiff-bit-
 - `assets\models\face_detection_yunet_2023mar.onnx`：人脸检测模型。
 - `assets\xmp\fix-over.xmp`：明显过曝的 RAW 修正候选。
 - `references\portrait.md`：人像模块的限制与建议。
+- `references\formats.md`：输入格式矩阵与依赖。
 - `references\styles.md`：黑白/去雾/夜景/食物的实测边界。
 - `assets\looks\`：look1/2/3/4、黑白、去雾、修正配置。
 - `references\limits.md`：实测上下限与决策矩阵。

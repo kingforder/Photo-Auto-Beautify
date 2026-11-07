@@ -30,13 +30,14 @@ except ImportError:
     import cv2
 
 SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(SKILL, "scripts"))
+import image_formats  # noqa: E402
+
 DEFAULT_RT = os.path.abspath(os.path.join(SKILL, "..", "rt-5.13", "RawTherapee_5.13_win64_x86_64_release"))
 DEFAULT_RM = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "RAWmakase", "rawmakase.exe")
 DEFAULT_MODEL = os.path.join(SKILL, "assets", "models", "face_detection_yunet_2023mar.onnx")
 LOOKS = {"min": "rt-look1.pp3", "medium": "rt-look2.pp3", "max": "rt-look3.pp3"}
 FACE_STRENGTH = {"min": 1, "medium": 2, "max": 3}
-RAW_EXT = (".rw2", ".dng", ".cr2", ".cr3", ".nef", ".arw", ".raf", ".orf", ".pef", ".srw")
-JPG_EXT = (".jpg", ".jpeg", ".png", ".tif", ".tiff")
 
 
 def load_face_module():
@@ -203,24 +204,35 @@ def main():
     try:
         files = [
             f for f in sorted(os.listdir(args.input))
-            if f.lower().endswith(RAW_EXT + JPG_EXT)
+            if os.path.splitext(f)[1].lower() in image_formats.ALL_EXT
             and not f.lower().startswith(".")
             and not any(f.lower().endswith(s + os.path.splitext(f)[1].lower()) for s in ("-beauty", "-fixed"))
             and "-rt" not in f.lower()
         ]
         for name in files:
             src = os.path.join(args.input, name)
-            is_raw = name.lower().endswith(RAW_EXT)
-            if is_raw:
-                preview = os.path.join(tmp, os.path.splitext(name)[0] + "-preview.jpg")
-                run([args.rawmakase, "render", src, preview, "--max-edge", "900", "--overwrite"])
-            else:
-                preview = src
-            m = measure(preview, face_mod, args.model)
-            rows.append({"file": name, "src": src, "raw": is_raw, "preview": preview, "m": m})
+            is_raw = name.lower().endswith(image_formats.RAW_EXT)
+            try:
+                # WebP/AVIF/HEIC/HEIF/JXL are converted to a working TIFF once;
+                # all later steps (RT, face, metrics) use that copy.
+                working = src if (is_raw or name.lower().endswith(image_formats.RT_NATIVE)) else image_formats.normalize_for_rt(src, tmp)
+                if is_raw:
+                    preview = os.path.join(tmp, os.path.splitext(name)[0] + "-preview.jpg")
+                    run([args.rawmakase, "render", src, preview, "--max-edge", "900", "--overwrite"])
+                else:
+                    preview = working
+                m = measure(preview, face_mod, args.model)
+                rows.append({"file": name, "src": src, "working": working, "raw": is_raw, "preview": preview, "m": m})
+            except Exception as e:
+                rows.append({"file": name, "src": src, "working": src, "raw": is_raw, "m": None, "error": str(e)})
 
-        median_sharp = float(np.median([r["m"]["sharp"] for r in rows])) if rows else 0
+        valid = [r for r in rows if r.get("m")]
+        median_sharp = float(np.median([r["m"]["sharp"] for r in valid])) if valid else 0
         for r in rows:
+            if not r.get("m"):
+                r["class"] = "error"
+                r["scene"] = "-"
+                continue
             r["class"] = classify(r["m"], median_sharp)
             r["scene"] = scene_of(r["m"])
 
@@ -230,10 +242,15 @@ def main():
             r["note"] = ""
             if args.dry_run:
                 continue
-            src, m, cls = r["src"], r["m"], r["class"]
+            src = r.get("working") or r["src"]
+            m, cls = r["m"], r["class"]
+            if cls == "error":
+                r["note"] = r.get("error", "读取/转换失败")
+                r["action"] = "suggest"
+                continue
             if cls == "ok":
-                dst = beauty_name(src, r["raw"], outdir)
-                tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(src))[0] + "-beauty.jpg")
+                dst = beauty_name(r["src"], r["raw"], outdir)
+                tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(r["src"]))[0] + "-beauty.jpg")
                 render_rt(src, tmp_out, r["raw"], r["scene"], args.strength, args.rt_root, tmp)
                 if r["scene"] == "portrait":
                     count, reason = apply_face(tmp_out, dst, args.strength, face_mod, args.model)
@@ -245,7 +262,7 @@ def main():
                 r["action"] = "beauty"
                 r["output"] = dst
             elif cls in ("obvious_over", "obvious_under"):
-                dst = fixed_name(src, outdir)
+                dst = fixed_name(r["src"], outdir)
                 if cls == "obvious_over":
                     r["note"] = fix_over(src, dst, r["raw"], args.rt_root, args.rawmakase, tmp)
                 else:
@@ -296,6 +313,11 @@ def main():
         for r in rows:
             if r["action"] == "suggest" and r["class"] != "obvious_blur":
                 f.write(f"| {r['file']} | {r['scene']} | {r['note']} |\n")
+        f.write("\n## 读取/转换失败\n\n")
+        f.write("| 原图 | 原因 |\n| --- | --- |\n")
+        for r in rows:
+            if r["class"] == "error":
+                f.write(f"| {r['file']} | {r['note']} |\n")
         f.write("\n## 方案说明\n\n")
         f.write("- 正常图片默认 look2；`--strength min/max` 切换 look1/look3。\n")
         f.write("- 人像自动加皮肤平滑（强度随档位 1/2/3），不做瘦脸。\n")

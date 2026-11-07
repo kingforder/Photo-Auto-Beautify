@@ -3,14 +3,21 @@
 纯命令行照片流水线 skill：正常片自动美化，明显问题生成修正候选并询问，疑似问题只给建议。
 
 - 默认中档美化；`--strength min/medium/max` 可选最低/最高档。
-- RAW 正常片输出与 RAW 同名的 JPG；JPG 正常片输出 `<原名>-beauty.jpg`。
+- RAW 正常片输出与 RAW 同名的 JPG；其他格式输出 `<原名>-beauty.jpg`。
 - 明显过曝/欠曝：保留原图，生成 `<原名>-fixed.jpg`，由用户确认是否保留。
 - 疑似问题/整图模糊：只给建议，不生成文件。
 - 最终只保留原图 + 美化文件 + 修正候选；预览/暂存会清理。
 
+## 支持格式
+
+RAW（RW2/DNG/CR2/CR3/NEF/ARW/RAF/ORF/PEF/SRW 等）、JPEG、PNG、TIFF、
+WebP、AVIF、HEIC/HEIF、JPEG XL、BMP；输出统一 JPEG。
+HEIC 需要 `pillow-heif`，JXL 需要 `ffmpeg`（libjxl）。
+
 ## 依赖
 
-- Python 3 + Pillow + NumPy + OpenCV（人脸/选片）
+- Python 3 + Pillow + NumPy + OpenCV（人脸/选片/格式转换）
+- `pillow-heif`（HEIC/HEIF），`ffmpeg`（JPEG XL）
 - RawTherapee 5.13 便携版（GPLv3，`scripts/setup-rt.ps1` 下载）
 - 可选：RAWmakase（RAW 预览与过曝修正）
 

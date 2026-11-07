@@ -49,6 +49,12 @@ own licenses:
 - **NumPy** — BSD 3-Clause
 - **Pillow** — HPND / PIL license
 - **Python** — PSF License
+- **pillow-heif** — BSD 3-Clause; it bundles libheif (LGPL-3.0), libde265
+  (LGPL-3.0) and x265 (GPL-2.0) for HEIC decoding. It is installed separately
+  by `setup-face.ps1`; this project does not distribute those binaries. Users
+  are responsible for the combined license terms of the installed wheel.
+- **ffmpeg** — optional external tool for JPEG XL. Distribution builds vary;
+  the copy used for testing is a GPLv3 build. It is not bundled here.
 
 Users installing these packages are responsible for their licenses.
 

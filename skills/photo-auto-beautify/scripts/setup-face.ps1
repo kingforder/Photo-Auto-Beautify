@@ -16,12 +16,15 @@ $env:PYTHONPATH = $DepsDir
 $hasCv2 = $false
 & $py -c "import cv2" 2>$null
 if ($LASTEXITCODE -eq 0) { $hasCv2 = $true }
+$hasHeif = $false
+& $py -c "import pillow_heif" 2>$null
+if ($LASTEXITCODE -eq 0) { $hasHeif = $true }
 
-if (-not $hasCv2) {
-    Write-Host 'Installing opencv-python-headless into the skill dependency folder...'
-    & $py -m pip install --target $DepsDir --upgrade opencv-python-headless
+if (-not $hasCv2 -or -not $hasHeif) {
+    Write-Host 'Installing opencv-python-headless + pillow-heif into the skill dependency folder...'
+    & $py -m pip install --target $DepsDir --upgrade opencv-python-headless pillow-heif
     if ($LASTEXITCODE -ne 0) {
-        throw 'pip install failed. Install opencv-python-headless + numpy + Pillow, or set PYTHON/--DepsDir.'
+        throw 'pip install failed. Install opencv-python-headless + pillow-heif + numpy + Pillow, or set PYTHON/--DepsDir.'
     }
 }
 
