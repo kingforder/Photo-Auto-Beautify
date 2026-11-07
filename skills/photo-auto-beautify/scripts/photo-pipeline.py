@@ -117,8 +117,12 @@ def unique(path):
     return f"{base}-{n}{ext}"
 
 
-def beauty_name(src, is_raw, outdir):
-    base = os.path.splitext(os.path.basename(src))[0]
+def beauty_name(src, is_raw, outdir, overwrite_originals=False):
+    base, ext = os.path.splitext(os.path.basename(src))
+    # Safe default: never touch the source. The dangerous opt-in only applies
+    # to normal JPG/JPEG, where the result can be written back in place.
+    if overwrite_originals and not is_raw and ext.lower() in (".jpg", ".jpeg"):
+        return src
     if is_raw:
         candidate = os.path.join(outdir, base + ".jpg")
         if not os.path.exists(candidate):
@@ -186,6 +190,8 @@ def main():
     p.add_argument("--rawmakase", default=DEFAULT_RM)
     p.add_argument("--model", default=DEFAULT_MODEL)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--overwrite-originals", action="store_true",
+                   help="dangerous: write normal JPG/JPEG beauty results back to the original path")
     p.add_argument("--temp-dir", help="writable temp folder (default: system temp)")
     p.add_argument("--report", default="pipeline-report.md")
     args = p.parse_args()
@@ -194,6 +200,8 @@ def main():
         raise SystemExit(f"input not found: {args.input}")
     outdir = args.output_dir or args.input
     os.makedirs(outdir, exist_ok=True)
+    if args.overwrite_originals:
+        print("WARNING: --overwrite-originals is enabled; JPG/JPEG originals will be replaced in place.")
     face_mod = load_face_module()
     tmp_base = args.temp_dir or tempfile.gettempdir()
     # Use a plain subdirectory (not tempfile.mkdtemp: its restrictive ACL makes
@@ -249,7 +257,7 @@ def main():
                 r["action"] = "suggest"
                 continue
             if cls == "ok":
-                dst = beauty_name(r["src"], r["raw"], outdir)
+                dst = beauty_name(r["src"], r["raw"], outdir, args.overwrite_originals)
                 tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(r["src"]))[0] + "-beauty.jpg")
                 render_rt(src, tmp_out, r["raw"], r["scene"], args.strength, args.rt_root, tmp)
                 if r["scene"] == "portrait":
@@ -259,6 +267,8 @@ def main():
                     r["note"] = f"face={count}"
                 else:
                     shutil.copy2(tmp_out, dst)
+                if os.path.abspath(dst) == os.path.abspath(r["src"]):
+                    r["note"] = (r["note"] + "；覆盖原图（不可逆）").lstrip("；")
                 r["action"] = "beauty"
                 r["output"] = dst
             elif cls in ("obvious_over", "obvious_under"):
@@ -323,6 +333,7 @@ def main():
         f.write("- 人像自动加皮肤平滑（强度随档位 1/2/3），不做瘦脸。\n")
         f.write("- 夜景用 ISO High + look2；高调/食物用 look2。\n")
         f.write("- 非 RAW/JPEG/PNG/TIFF 先归一化为工作 TIFF；明显过曝的 RAW 用 RAWmakase XMP -2.5EV。\n")
+        f.write("- 默认不覆盖；`--overwrite-originals` 仅对 JPG/JPEG 正常片生效，其余格式保留原文件。\n")
         f.write("- 疑似问题不生成任何文件；中间预览/暂存已清理。\n")
 
     print(f"processed={len(rows)} report={args.report}")

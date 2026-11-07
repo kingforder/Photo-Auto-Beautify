@@ -49,6 +49,15 @@ license: 0BSD
 - 明显问题 → `<原名>-fixed.jpg`
 - 最终只留原图 + 美化文件 + 修正候选；预览/暂存清理
 
+**默认绝不覆盖原图。** 只有用户明确要求并接受不可逆后果时，才加
+`--overwrite-originals`：
+
+- 仅普通 JPG/JPEG 正常片写回原路径；
+- RAW 仍保留原片，只生成同名 `.jpg`；
+- PNG/WebP/HEIC/JXL 仍生成 `-beauty.jpg`，不改原文件；
+- `*-fixed.jpg` 仍是待确认候选，不自动覆盖；
+- 建议先备份；不要默认开启。
+
 ## 快速开始
 
 ```powershell
@@ -60,6 +69,7 @@ python scripts\photo-pipeline.py `
 
 - `--dry-run`：只输出分诊计划；
 - `--temp-dir`：受限环境指定可写临时目录；
+- `--overwrite-originals`：危险选项，只在用户强烈要求时用于 JPG/JPEG；
 - 跑完先看报告，再确认 `*-fixed.jpg` 是否保留。
 
 ## 场景与风格

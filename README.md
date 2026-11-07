@@ -60,6 +60,17 @@ python "$Skill\scripts\photo-pipeline.py" `
 - Obvious → `<name>-fixed.jpg`; ask the user before keeping it.
 - Suspect/blur → no file, only suggestions.
 
+### Overwriting originals (dangerous)
+
+The default never modifies a source file. Only when the user explicitly insists,
+add `--overwrite-originals`:
+
+- normal JPG/JPEG only, written back in place;
+- RAW stays untouched and still produces `<name>.jpg`;
+- PNG/WebP/HEIC/JXL still produce `-beauty.jpg`, never overwritten;
+- `*-fixed.jpg` candidates are still separate and need confirmation;
+- irreversible — back up first; never enable by default.
+
 See [`skills/photo-auto-beautify/SKILL.md`](skills/photo-auto-beautify/SKILL.md)
 for the full policy, scene table and limits.
 
