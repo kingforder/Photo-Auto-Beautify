@@ -16,6 +16,29 @@ Built for RAW and mainstream raster formats (JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL/
 BMP/GIF), with scene-aware presets (portrait / night / high-key / landscape /
 general), optional face smoothing, and no full-frame generative edits.
 
+## Built on open source
+
+This is not a proprietary black box: every processing step is powered by
+open-source components, and the skill itself is released under **0BSD**.
+
+| Component | Role | License |
+| --- | --- | --- |
+| **RawTherapee** | RAW/JPEG/PNG/TIFF rendering | GPLv3 |
+| **YuNet** (OpenCV Zoo) | face detection | MIT |
+| **OpenCV** | face detection, image analysis | Apache-2.0 |
+| **NumPy** | numeric analysis | BSD-3-Clause |
+| **Pillow** | image I/O and format conversion | HPND |
+| **Python** | runtime | PSF |
+| **pillow-heif** (optional) | HEIC/HEIF decoding | BSD-3-Clause |
+| **ffmpeg** (optional) | JPEG XL decoding | build-dependent |
+| **RAWmakase** (optional) | RAW previews and exposure fixes | MIT |
+
+No proprietary SDK, cloud API, account or subscription is required. All scripts
+are readable and run locally. RawTherapee is downloaded from its official
+release; the bundled YuNet model keeps its MIT notice and is SHA256-checked.
+The full inventory, including bundled codec licenses, is in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
 ## Install
 
 Published through [skills.sh](https://www.skills.sh):

@@ -17,6 +17,27 @@
 - 多格式输入，统一输出 JPEG；
 - 原图保护、统一命名、修正候选确认、清理中间产物。
 
+## 基于开源组件
+
+这不是黑盒工具：每一步处理都建立在开源组件上，skill 本身使用 **0BSD**。
+
+| 组件 | 用途 | 许可证 |
+| --- | --- | --- |
+| **RawTherapee** | RAW/JPEG/PNG/TIFF 渲染 | GPLv3 |
+| **YuNet**（OpenCV Zoo） | 人脸检测 | MIT |
+| **OpenCV** | 人脸检测、图像分析 | Apache-2.0 |
+| **NumPy** | 数值分析 | BSD-3-Clause |
+| **Pillow** | 图像读写与格式转换 | HPND |
+| **Python** | 运行时 | PSF |
+| **pillow-heif**（可选） | HEIC/HEIF 解码 | BSD-3-Clause |
+| **ffmpeg**（可选） | JPEG XL 解码 | 取决于构建 |
+| **RAWmakase**（可选） | RAW 预览与曝光修正 | MIT |
+
+不需要专有 SDK、云 API、账号或订阅；脚本全部可读、全部本地运行。
+RawTherapee 从官方 release 下载，YuNet 模型随包保留 MIT 声明并校验 SHA256。
+完整清单（含编解码器许可证）见
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+
 ## 支持的格式
 
 RAW（RW2/DNG/CR2/CR3/NEF/ARW/RAF/ORF/PEF/SRW 等）、JPEG、PNG、TIFF、

@@ -15,6 +15,14 @@ suggestions only.
 - **Originals are never overwritten by default.** `--overwrite-originals` is an
   explicit, dangerous opt-in for normal JPG/JPEG only; RAW and other formats stay intact.
 
+## Built on open source
+
+Every processing step is open source, and the skill itself is **0BSD**. The core
+stack is RawTherapee (GPLv3), OpenCV (Apache-2.0), YuNet (MIT), Pillow (HPND),
+NumPy (BSD-3-Clause) and Python (PSF); `pillow-heif`, `ffmpeg` and RAWmakase are
+optional. No proprietary SDK, cloud API, account or subscription is required;
+scripts are readable and run locally. See `THIRD_PARTY_NOTICES.md`.
+
 ## Supported formats
 
 RAW (RW2/DNG/CR2/CR3/NEF/ARW/RAF/ORF/PEF/SRW, and more), JPEG, PNG, TIFF,
