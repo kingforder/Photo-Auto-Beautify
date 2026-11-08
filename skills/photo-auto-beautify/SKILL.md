@@ -87,11 +87,12 @@ python scripts\burst-detect.py `
 ```
 
 The default only groups bursts and picks the best frame; add `--stack` and/or
-`--animate` explicitly. Best frames are copied to `bursts/best/` by default;
-`--best-per-burst N` keeps more than one. Invalid/suspect frames are skipped
-when valid alternatives exist. `--apply-cleanup` is opt-in and moves only the
-remaining burst RAW files to `<input>/待删除`; selected best files stay in place
-and nothing is deleted automatically.
+`--animate` explicitly. Best frames stay in the original input folder (no
+separate copy folder); `--best-per-burst N` selects more than one. Invalid/
+suspect frames are skipped when valid alternatives exist. `--apply-cleanup` is
+opt-in and moves only the remaining burst RAW files to `<input>/待删除`; the
+selected best files stay in place. Cleanup is skipped for a group if its best
+frames cannot be verified in the input folder.
 
 For RAW files, metadata can come from the original RAW while pixels come from
 rendered JPGs with the same stem:

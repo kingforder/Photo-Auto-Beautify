@@ -319,16 +319,38 @@ def unique_path(path):
     return f"{stem}-{i}{ext}"
 
 
-def save_best_files(group, selected, best_dir, burst_id, dry_run=False):
+def ensure_best_in_root(selected, input_dir, best_dir, dry_run=False):
+    """Best frames must live in the input folder; stage copies are moved back
+    or removed. Returns the root paths (or planned paths in dry-run)."""
     saved = []
-    if dry_run:
-        return [os.path.join(best_dir, f["name"]) for f in selected]
-    os.makedirs(best_dir, exist_ok=True)
-    for rank, frame in enumerate(selected, 1):
-        dest = os.path.join(best_dir, f"{burst_id}-best-{rank}-{frame['name']}")
-        dest = unique_path(dest)
-        shutil.copy2(frame["path"], dest)
+    for frame in selected:
+        root_path = os.path.join(input_dir, frame["name"])
+        staged = []
+        if os.path.isdir(best_dir):
+            staged = [
+                os.path.join(best_dir, n) for n in os.listdir(best_dir)
+                if n.endswith(frame["name"])
+            ]
+        if os.path.exists(root_path):
+            saved.append(root_path)
+            if not dry_run:
+                for extra in staged:
+                    if os.path.abspath(extra) != os.path.abspath(root_path):
+                        os.remove(extra)
+            continue
+        if not staged:
+            raise FileNotFoundError(f"missing best frame: {frame['name']}")
+        if dry_run:
+            saved.append(root_path)
+            continue
+        os.makedirs(input_dir, exist_ok=True)
+        dest = unique_path(root_path)
+        shutil.move(staged[0], dest)
+        for extra in staged[1:]:
+            os.remove(extra)
         saved.append(dest)
+    if not dry_run and os.path.isdir(best_dir) and not os.listdir(best_dir):
+        os.rmdir(best_dir)
     return saved
 
 
@@ -544,11 +566,11 @@ def main():
             "animation": None,
             "moved": [],
         }
-        if not args.no_save_best:
+        if args.apply_cleanup or not args.no_save_best:
             try:
-                item["best_files"] = save_best_files(
-                    group, selected, os.path.join(out_dir, "best"),
-                    item["id"], args.dry_run,
+                item["best_files"] = ensure_best_in_root(
+                    selected, input_dir, os.path.join(out_dir, "best"),
+                    args.dry_run,
                 )
             except Exception as exc:
                 item["best_note"] = f"best save failed: {exc}"

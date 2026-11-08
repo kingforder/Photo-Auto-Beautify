@@ -11,7 +11,7 @@ A shell-only photo pipeline skill. It triages a folder into
 - uses a light portrait base plus a mask-free global skin-tone LUT; no face mask, smoothing, or local whitening;
 - keeps the original and writes a `*-fixed.jpg` candidate for obvious problems;
 - only reports suggestions for suspect or unrepairable images;
-- detects bursts, picks the best frame, and optionally stacks or animates them (separate, non-destructive pass); best frames can be saved and remaining burst RAW optionally moved to a review folder;
+- detects bursts, picks the best frame, and optionally stacks or animates them (separate, non-destructive pass); best frames stay in the original folder and remaining burst RAW can optionally be moved to a review folder;
 - removes previews and temporary files, leaving originals + results.
 
 Built for RAW and mainstream raster formats (JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL/
