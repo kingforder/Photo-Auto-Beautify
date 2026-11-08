@@ -6,7 +6,7 @@ preprocessing.
 ```text
 1. Detect bursts
 2. Group frames
-3. Select best frame(s)
+3. Select 1 best frame (at most 2)
 4. Decide: stack OR animation
 5. Optional paired cleanup
 6. Beauty on every retained output
@@ -22,20 +22,25 @@ python scripts\burst-detect.py `
   --raster-dir "C:\photos\rendered" `
   --output-dir "C:\photos\bursts" `
   --min-frames 3 --gap 2 `
-  --best-per-burst 2 `
+  --best-per-burst 1 `
   --stack --animate
 ```
 
 `--raster-dir` supplies decodable frames for RAW (same stem). Best frames stay
 in the original input folder; they are not copied to a separate best folder.
 
+`--best-per-burst` is capped at 1-2. Keep **one** by default. Keep two only when
+the second frame is a clearly different keeper (expression, pose, gesture, or
+moment) — not because the burst is long or the runner-up is close in score.
+Never keep 3 or more; if in doubt, keep one. Culling is not a coverage tool.
+
 ### Decision rule
 
 | Burst content | Keep | Output |
 | --- | --- | --- |
-| Static scene / city / clouds | Best frame(s) | High-resolution stack |
-| People walking / cars / birds / moving sun | Best frame(s) | Animation |
-| Too few valid frames | Best available | No stack/animation |
+| Static scene / city / clouds | Best frame (1, max 2) | High-resolution stack |
+| People walking / cars / birds / moving sun | Best frame (1, max 2) | Animation |
+| Too few valid frames | Best available (1, max 2) | No stack/animation |
 
 The tool also measures motion and moving highlights. A stack is skipped when
 those guards trigger; the best frame and animation remain.

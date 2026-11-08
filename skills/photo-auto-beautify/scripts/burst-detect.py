@@ -59,8 +59,9 @@ def parse_args():
     p.add_argument("--max-animate-frames", type=int, default=24)
     p.add_argument("--max-width", type=int, default=1280)
     p.add_argument("--fps", type=float, default=10.0)
-    p.add_argument("--best-per-burst", type=int, default=1,
-                   help="number of best frames to save per burst (default 1)")
+    p.add_argument("--best-per-burst", type=int, choices=(1, 2), default=1,
+                   help="best frames to keep per burst: 1 (default) or 2 max; "
+                        "use 2 only for a clearly distinct second keeper")
     p.add_argument("--no-save-best", action="store_true",
                    help="do not copy selected best frames")
     p.add_argument("--apply-cleanup", action="store_true",
@@ -301,12 +302,14 @@ def best_frame(group):
 
 
 def best_frames(group, count):
+    """Return at most two keepers; more coverage is not the goal of culling."""
     valid = [
         f for f in group
         if f.get("hash") is not None or f.get("score", 0) > 0
     ]
     pool = valid or group
-    return sorted(pool, key=lambda f: (f["score"], f["sharp"]), reverse=True)[:max(1, count)]
+    limit = min(2, max(1, count))
+    return sorted(pool, key=lambda f: (f["score"], f["sharp"]), reverse=True)[:limit]
 
 
 def unique_path(path):

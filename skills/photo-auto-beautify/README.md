@@ -18,7 +18,7 @@ suspect images get suggestions only.
 - Normal RAW → a JPG with the same name; other formats → `<name>-beauty.jpg`.
 - Obvious over/under-exposure → keep the original, write `<name>-fixed.jpg`, ask first.
 - Suspect or blurred images → suggestions only, no file.
-- Optional burst pass: group by time/camera/hash, pick best, optionally stack or animate (WebP/GIF); best frames stay in the original folder, and `--apply-cleanup` can move remaining burst RAW to a review folder. Separate and non-destructive by default.
+- Optional burst pass: group by time/camera/hash, keep one best frame by default (max two, only for a clearly different keeper), optionally stack or animate (WebP/GIF); best frames stay in the original folder, and `--apply-cleanup` can move remaining burst RAW to a review folder. Separate and non-destructive by default.
 - Final state: originals + beauty files + fixed candidates; previews/temp removed.
 - **Originals are never overwritten by default.** `--overwrite-originals` is an
   explicit, dangerous opt-in for normal JPG/JPEG only; RAW and other formats stay intact.

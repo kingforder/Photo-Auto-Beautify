@@ -8,7 +8,8 @@ run it as a separate pass before or after beauty.
 1. Scan a folder and read capture time, camera make/model, and dimensions.
 2. Group frames into bursts when they are close in time, from the same camera,
    and perceptually similar.
-3. Pick the sharpest frame, with a clipping penalty.
+3. Pick one best frame by default (at most two, only for a clearly distinct
+   second keeper), with a clipping penalty.
 4. Optionally align and stack the frames (median / mean / exposure fusion).
 5. Optionally write an animated WebP or GIF.
 6. Write `bursts.json` and `bursts.md`; originals are never modified.
@@ -44,11 +45,22 @@ Useful options:
 | `--max-animate-frames` | 24 | Frame cap |
 | `--max-width` | 1280 | Animation width cap |
 | `--fps` | 10 | Fallback speed when times are missing |
-| `--best-per-burst` | 1 | Best RAW frames selected per burst |
+| `--best-per-burst` | 1 | Frames kept per burst: 1 (default) or 2 max |
 | `--no-save-best` | off | Do not record/validate best frames |
 | `--apply-cleanup` | off | Move non-best burst RAW files to the trash folder |
 | `--trash-dir` | `<input>/待删除` | Destination for cleanup |
 | `--dry-run` | off | Group and report without writing |
+
+### How many best frames
+
+Keep **1** frame per burst by default. The maximum is **2**, and the option
+accepts only those two values. Choose two only when the second frame is a
+clearly different keeper — a different expression, pose, gesture, or decisive
+moment — not merely the next-highest score. A long burst does not justify
+keeping more frames. If in doubt, keep one.
+
+This is deliberately stricter than "top N": burst preprocessing should reduce a
+burst to the frame(s) worth delivering, not preserve coverage.
 
 ## Outputs
 

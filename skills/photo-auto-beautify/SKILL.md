@@ -38,7 +38,7 @@ The agent can adjust:
 | --- | --- |
 | “自然一点 / 不要假白” | Prefer lower portrait base / neutral look; keep shadows |
 | “脸再白一点” | Adjust portrait whitening/LUT strength within safe limits |
-| “连拍只留最好的” | Set `--best-per-burst`, verify best frames, then cleanup |
+| “连拍只留最好的” | Keep 1 best frame per burst (default; max 2), verify, then cleanup |
 | “不要动原片” | Skip `--apply-cleanup`; keep best frames in place |
 | “要动图 / 不要堆叠” | Enable animation, skip stack; respect motion guards |
 | “这组是风景/夜景” | Use the matching scene look; do not force portrait treatment |
@@ -119,13 +119,15 @@ python scripts\burst-detect.py `
   --stack --animate
 ```
 
-The default only groups bursts and picks the best frame; add `--stack` and/or
+The default only groups bursts and picks **one** best frame; add `--stack` and/or
 `--animate` explicitly. Best frames stay in the original input folder (no
-separate copy folder); `--best-per-burst N` selects more than one. Invalid/
-suspect frames are skipped when valid alternatives exist. `--apply-cleanup` is
-opt-in and moves only the remaining burst RAW files to `<input>/待删除`; the
-selected best files stay in place. Cleanup is skipped for a group if its best
-frames cannot be verified in the input folder.
+separate copy folder). `--best-per-burst` accepts only `1` (default) or `2`:
+keep a second frame only when it is a clearly different keeper (expression,
+pose, or moment), never just to preserve extra coverage. Invalid/suspect frames
+are skipped when valid alternatives exist. `--apply-cleanup` is opt-in and
+moves only the remaining burst RAW files to `<input>/待删除`; the selected best
+files stay in place. Cleanup is skipped for a group if its best frames cannot
+be verified in the input folder.
 
 For RAW files, metadata can come from the original RAW while pixels come from
 rendered JPGs with the same stem:
@@ -166,7 +168,8 @@ same Python flow is expected but not yet verified.
 
 For a folder that contains bursts, preprocess before the beauty pass:
 
-1. Detect/group bursts and select best frame(s).
+1. Detect/group bursts and select one best frame (at most two, and only for a
+   clearly distinct second keeper).
 2. Decide stack **or** animation from motion/highlight checks.
 3. Optionally verify best frames and move remaining burst RAW to `待删除`.
 4. Apply beauty to every retained output: best RAW, stack JPG, animation, and
