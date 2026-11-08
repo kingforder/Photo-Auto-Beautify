@@ -20,7 +20,7 @@ look; originals are never modified; only originals and results remain.
 | Portrait | Conservative | Light base + global skin-tone LUT; no face mask, smoothing, or local whitening |
 | Styles | Extensible | B&W, dehaze, night, food; more looks can be added |
 | Culling | Stable | Blur, exposure outliers, near-duplicates; reports only, never deletes |
-| Bursts | Optional | Group by time/camera/hash, pick best, optional stack or animated WebP/GIF; non-destructive |
+| Bursts | Optional | Preprocess first: group, best, stack/animation, optional cleanup; beauty retained outputs after |
 | Formats | Broad | RAW, JPEG, PNG, TIFF, WebP, AVIF, HEIC/HEIF, JXL, BMP, GIF |
 | Delivery | Stable | Original protection, consistent naming, fixed-candidate confirmation, cleanup |
 | Extensibility | Design goal | New scenes, styles and detectors plug in through scripts/config |
@@ -129,6 +129,20 @@ same Python flow is expected but not yet verified.
 | WSL1 | Expected | Same userland flow as Linux; not tested here |
 | macOS | Expected | Python flow should work; RT build not yet verified |
 
+## Burst-first workflow
+
+For a folder that contains bursts, preprocess before the beauty pass:
+
+1. Detect/group bursts and select best frame(s).
+2. Decide stack **or** animation from motion/highlight checks.
+3. Optionally verify best frames and move remaining burst RAW to `待删除`.
+4. Apply beauty to every retained output: best RAW, stack JPG, animation, and
+   non-burst originals.
+
+Best frames stay in the original folder. Cleanup is a paired operation: never
+move non-best frames if the best frames cannot be verified in place. Full
+details: `references/workflow.md`.
+
 ## Scenes and styles
 
 - Scenes: `portrait`, `night`, `highkey`, `landscape`, `general`;
@@ -157,6 +171,7 @@ same Python flow is expected but not yet verified.
 - `references/limits.md`: tested strength limits and decision matrix
 - `references/portrait.md`: portrait capabilities and limits
 - `references/bursts.md`: burst grouping, stacking, animation, and limits
+- `references/workflow.md`: burst-first preprocessing then beauty order
 - `references/styles.md`: B&W, dehaze, night, food
 - `references/formats.md`: input formats and dependencies
 - `scripts/photo-pipeline.py`: main pipeline
