@@ -552,9 +552,11 @@ def main():
 
     for idx, group in enumerate(groups, 1):
         best = best_frame(group)
+        prefix = os.path.splitext(best["name"])[0]
         selected = best_frames(group, args.best_per_burst)
         item = {
             "id": f"burst-{idx:03d}",
+            "prefix": prefix,
             "frames": [f["name"] for f in group],
             "start": format_time(group[0]["mtime"]),
             "end": format_time(group[-1]["mtime"]),
@@ -575,7 +577,7 @@ def main():
             except Exception as exc:
                 item["best_note"] = f"best save failed: {exc}"
         if not args.dry_run and args.stack:
-            path = os.path.join(out_dir, f"{item['id']}-stack.jpg")
+            path = os.path.join(out_dir, f"{prefix}-stack.jpg")
             out, note = write_stack(
                 group, best, path, args.stack_mode,
                 args.force_stack, args.motion_threshold, args.highlight_threshold,
@@ -584,7 +586,7 @@ def main():
             item["stack_note"] = note
         if not args.dry_run and args.animate:
             ext = "webp" if args.animate_format == "webp" else "gif"
-            path = os.path.join(out_dir, f"{item['id']}.{ext}")
+            path = os.path.join(out_dir, f"{prefix}.{ext}")
             out, note = write_animation(
                 group, best, path, args.animate_format,
                 args.max_width, args.fps, args.max_animate_frames,

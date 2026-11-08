@@ -56,13 +56,17 @@ Useful options:
 bursts/
   bursts.json
   bursts.md
-  burst-001-stack.jpg           # only with --stack
-  burst-001.webp                # only with --animate (or .gif)
+  P1022859-stack.jpg           # best-frame stem prefix + -stack
+  P1022859.webp                # best-frame stem prefix + animation
 ```
 
 Best frames are not copied into a separate folder: they stay in the original
 input folder and are listed in `bursts.json`. A legacy `bursts/best/` staging
 folder is moved back to the input folder or removed during validation.
+
+Output filenames use the **best frame's original stem as prefix** (for example
+`P1022859-stack.jpg`, `P1022859.webp`), so the result still points back to the
+source photo. The shorter `burst-001` id remains in the manifest/report only.
 
 `--apply-cleanup` is intentionally opt-in:
 

@@ -119,7 +119,8 @@ def main():
                 rows.append((item["id"], 0, "not enough rendered frames"))
                 continue
             best = next((f for f in frames if f["name"] == item["best"]), frames[0])
-            dest = os.path.join(args.output_dir, f"{item['id']}-hires-stack.jpg")
+            prefix = os.path.splitext(item["best"])[0]
+            dest = os.path.join(args.output_dir, f"{prefix}-hires-stack.jpg")
             out, note = bd.write_stack(frames, best, dest, "median", force=False)
             rows.append((item["id"], len(frames), note if out else note))
     finally:
