@@ -63,9 +63,19 @@ After preprocessing, apply the normal beauty pass to every retained image:
 - non-burst originals in the input folder.
 
 Best-frame RAW and non-burst originals go through `photo-pipeline.py` normally.
-Stack JPGs can be processed as a separate input folder. For animations, the
-frames are rendered/beautified before encoding, so the final animated file is
-also a beauty output.
+Stack JPGs can be processed as a separate input folder. Animations are beautified
+frame-by-frame after encoding:
+
+```powershell
+python scripts\burst-animate-beautify.py `
+  --input "C:\photos\bursts" `
+  --output-dir "C:\photos\beauty-out\animations" `
+  --rt-root "C:\path\to\RawTherapee" `
+  --look-profile "rt-look3.pp3"
+```
+
+This decodes each neutral animation, renders every frame with the same look,
+and re-encodes while preserving durations and loop.
 
 The current CLI split is:
 
@@ -84,9 +94,10 @@ python scripts\photo-pipeline.py `
 
 Implementation note: the animation is encoded from the raster supplied to
 `burst-detect.py` via `--raster-dir`. If the animation must be beautified, pass
-beauty-rendered frames as the raster; if it must stay neutral, pass neutral
-frames. A single orchestrator that renders neutral frames, preprocesses, then
-applies frame-level beauty before encoding is not included yet.
+neutral frames to preprocessing, then run `burst-animate-beautify.py` on the
+encoded neutral animations. A single orchestrator that renders neutral frames,
+preprocesses, and runs all three beauty targets in one command is not included
+yet; the commands in this document are the supported composition.
 
 ## 3. What is final
 

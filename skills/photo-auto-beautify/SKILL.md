@@ -177,6 +177,7 @@ details: `references/workflow.md`.
 - `scripts/photo-pipeline.py`: main pipeline
 - `scripts/burst-detect.py`: optional burst grouping/stack/animation
 - `scripts/burst-hires.py`: optional high-resolution RAW stack
+- `scripts/burst-animate-beautify.py`: frame-level beauty for neutral animations
 - `scripts/setup-rt.sh`: Linux/WSL RawTherapee setup
 - `requirements.txt`: Python dependencies for Linux/macOS
 - `LICENSE` / `THIRD_PARTY_NOTICES.md`: 0BSD and third-party licenses
