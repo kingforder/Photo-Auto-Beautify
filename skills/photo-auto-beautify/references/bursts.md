@@ -37,7 +37,8 @@ Useful options:
 | `--stack` | off | Write a stacked JPEG |
 | `--stack-mode` | median | `median`, `mean`, or `fusion` |
 | `--force-stack` | off | Stack even when motion is detected |
-| `--motion-threshold` | 0.05 | Changed-pixel fraction that marks motion |
+| `--motion-threshold` | 0.08 | Changed-pixel fraction that marks motion |
+| `--highlight-threshold` | 0.09 | Changed bright-pixel fraction that marks moving highlights |
 | `--animate` | off | Write an animated file |
 | `--animate-format` | webp | `webp` (smaller) or `gif` |
 | `--max-animate-frames` | 24 | Frame cap |
@@ -81,7 +82,7 @@ time.
   translation/euclidean ECC on a downscaled proxy.
 - **People/portraits**: moving subjects ghost under median/mean. The tool
   measures aligned frame differences and skips the stack above
-  `--motion-threshold` (default 5% changed pixels); use best-frame or animation,
+  `--motion-threshold` (default 8% changed pixels); use best-frame or animation,
   or pass `--force-stack` if you really want the ghosted version.
 - **Exposure fusion** needs exposure diversity; if the burst is flat, the tool
   falls back to mean and records that in the report.
@@ -108,8 +109,10 @@ python scripts\burst-hires.py `
 - Default look is `rt-look3.pp3`; override with `--look-profile`.
 - Selected groups are stacked with `median`, even if motion was detected; use
   this only for groups that were marked stackable.
-- Moving sun/highlights can distort under median stacking; compare the stack
-  with the best frame and prefer best-frame for those.
+- **Moving sun/highlights**: the tool measures changed bright pixels and skips
+  the stack above `--highlight-threshold` (default 9%); use best-frame/animation,
+  or `--force-stack` for a deliberately ghosted/median version.
+- For those groups, compare the stack with the best frame and prefer best-frame.
 
 ## Animation caveats
 

@@ -120,7 +120,7 @@ def main():
                 continue
             best = next((f for f in frames if f["name"] == item["best"]), frames[0])
             dest = os.path.join(args.output_dir, f"{item['id']}-hires-stack.jpg")
-            out, note = bd.write_stack(frames, best, dest, "median", force=True)
+            out, note = bd.write_stack(frames, best, dest, "median", force=False)
             rows.append((item["id"], len(frames), note if out else note))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
