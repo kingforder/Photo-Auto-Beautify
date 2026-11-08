@@ -46,6 +46,10 @@ def parse_args():
     p.add_argument("--hash-distance", type=int, default=14)
     p.add_argument("--stack", action="store_true", help="write a median/mean/fusion stack")
     p.add_argument("--stack-mode", choices=["median", "mean", "fusion"], default="median")
+    p.add_argument("--force-stack", action="store_true",
+                   help="stack even when motion/ghosting is detected")
+    p.add_argument("--motion-threshold", type=float, default=0.05,
+                   help="fraction of changed pixels that marks motion (default 0.05)")
     p.add_argument("--animate", action="store_true", help="write animated WebP/GIF")
     p.add_argument("--animate-format", choices=["webp", "gif"], default="webp")
     p.add_argument("--max-animate-frames", type=int, default=24)
@@ -336,7 +340,7 @@ def crop_common(images, border_ratio=0.02):
     return [im[b:h - b, b:w - b] for im in images]
 
 
-def write_stack(group, best, path, mode):
+def write_stack(group, best, path, mode, force=False, motion_threshold=0.05):
     frames, best_index = load_frames(group, best)
     if len(frames) < 2:
         return None, "not enough decodable frames"
@@ -348,6 +352,15 @@ def write_stack(group, best, path, mode):
     aligned = crop_common(aligned)
     if not aligned:
         return None, "empty aligned frames"
+
+    changed = 0.0
+    for im in aligned:
+        diff = np.abs(im.astype(np.int16) - aligned[0].astype(np.int16))
+        changed += float((diff.max(axis=2) > 24).mean())
+    changed /= max(1, len(aligned))
+    if changed > motion_threshold and not force:
+        return None, f"motion detected ({changed * 100:.1f}% changed); skipped stack; use best/animation"
+
     stack = np.stack([im.astype(np.float32) for im in aligned], axis=0)
     mode_label = mode
     if mode == "mean":
@@ -443,7 +456,10 @@ def main():
         }
         if not args.dry_run and args.stack:
             path = os.path.join(out_dir, f"{item['id']}-stack.jpg")
-            out, note = write_stack(group, best, path, args.stack_mode)
+            out, note = write_stack(
+                group, best, path, args.stack_mode,
+                args.force_stack, args.motion_threshold,
+            )
             item["stack"] = os.path.basename(out) if out else None
             item["stack_note"] = note
         if not args.dry_run and args.animate:

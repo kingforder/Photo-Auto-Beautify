@@ -34,6 +34,8 @@ Useful options:
 | `--hash-distance` | 14 | Max perceptual-hash Hamming distance |
 | `--stack` | off | Write a stacked JPEG |
 | `--stack-mode` | median | `median`, `mean`, or `fusion` |
+| `--force-stack` | off | Stack even when motion is detected |
+| `--motion-threshold` | 0.05 | Changed-pixel fraction that marks motion |
 | `--animate` | off | Write an animated file |
 | `--animate-format` | webp | `webp` (smaller) or `gif` |
 | `--max-animate-frames` | 24 | Frame cap |
@@ -70,8 +72,10 @@ decodable raster. Render RAW first, or use the main pipeline's JPG output.
 
 - **Static scenes / night**: median or mean reduces noise; alignment is
   translation/euclidean ECC on a downscaled proxy.
-- **People/portraits**: moving subjects ghost under median/mean. Use best-frame
-  or animation instead.
+- **People/portraits**: moving subjects ghost under median/mean. The tool
+  measures aligned frame differences and skips the stack above
+  `--motion-threshold` (default 5% changed pixels); use best-frame or animation,
+  or pass `--force-stack` if you really want the ghosted version.
 - **Exposure fusion** needs exposure diversity; if the burst is flat, the tool
   falls back to mean and records that in the report.
 - Cropping removes a small border after alignment.
