@@ -87,6 +87,30 @@ time.
   falls back to mean and records that in the report.
 - Cropping removes a small border after alignment.
 
+## High-resolution RAW stacks
+
+`burst-hires.py` reads a `bursts.json`, renders the selected RAW frames through
+RawTherapee with the same look profile, downsizes only to a safe working size,
+aligns and median-stacks them.
+
+```powershell
+python scripts\burst-hires.py `
+  --input "C:\photos" `
+  --bursts "C:\photos\bursts\bursts.json" `
+  --output-dir "C:\photos\bursts-hires" `
+  --rt-root "C:\path\to\RawTherapee" `
+  --temp-dir "C:\temp\burst-hires" `
+  --max-side 3000
+```
+
+- `--temp-dir` should be ASCII; RawTherapee may fail to save to non-ASCII temp
+  paths.
+- Default look is `rt-look3.pp3`; override with `--look-profile`.
+- Selected groups are stacked with `median`, even if motion was detected; use
+  this only for groups that were marked stackable.
+- Moving sun/highlights can distort under median stacking; compare the stack
+  with the best frame and prefer best-frame for those.
+
 ## Animation caveats
 
 - Frames are aligned, cropped to a common area, and resized to `--max-width`.

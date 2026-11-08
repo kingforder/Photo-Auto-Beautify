@@ -99,6 +99,19 @@ python scripts\burst-detect.py `
   --output-dir "C:\photos\bursts" --stack --animate
 ```
 
+For selected groups, render RAW at higher resolution and stack:
+
+```powershell
+python scripts\burst-hires.py `
+  --input "C:\photos" --bursts "C:\photos\bursts\bursts.json" `
+  --output-dir "C:\photos\bursts-hires" `
+  --rt-root "C:\path\to\RawTherapee" --temp-dir "C:\temp\burst-hires"
+```
+
+`--temp-dir` must be an ASCII path; RawTherapee can fail to save under some
+non-ASCII temp locations. High-resolution stacking is for static scenes; moving
+sun/highlights or people are better served by best-frame/animation.
+
 On Linux/WSL, run `bash scripts/setup-rt.sh` first and use `python3`; the pipeline
 auto-detects the extracted AppImage under `rt-5.13/squashfs-root`. On macOS the
 same Python flow is expected but not yet verified.
@@ -144,6 +157,7 @@ same Python flow is expected but not yet verified.
 - `references/formats.md`: input formats and dependencies
 - `scripts/photo-pipeline.py`: main pipeline
 - `scripts/burst-detect.py`: optional burst grouping/stack/animation
+- `scripts/burst-hires.py`: optional high-resolution RAW stack
 - `scripts/setup-rt.sh`: Linux/WSL RawTherapee setup
 - `requirements.txt`: Python dependencies for Linux/macOS
 - `LICENSE` / `THIRD_PARTY_NOTICES.md`: 0BSD and third-party licenses
