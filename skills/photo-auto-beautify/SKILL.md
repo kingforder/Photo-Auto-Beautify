@@ -20,6 +20,7 @@ look; originals are never modified; only originals and results remain.
 | Portrait | Conservative | Light base + global skin-tone LUT; no face mask, smoothing, or local whitening |
 | Styles | Extensible | B&W, dehaze, night, food; more looks can be added |
 | Culling | Stable | Blur, exposure outliers, near-duplicates; reports only, never deletes |
+| Bursts | Optional | Group by time/camera/hash, pick best, optional stack or animated WebP/GIF; non-destructive |
 | Formats | Broad | RAW, JPEG, PNG, TIFF, WebP, AVIF, HEIC/HEIF, JXL, BMP, GIF |
 | Delivery | Stable | Original protection, consistent naming, fixed-candidate confirmation, cleanup |
 | Extensibility | Design goal | New scenes, styles and detectors plug in through scripts/config |
@@ -27,7 +28,7 @@ look; originals are never modified; only originals and results remain.
 ## Roadmap (not a commitment)
 
 - **Perspective and lens**: vertical correction for architecture, distortion, vignetting, chromatic aberration.
-- **HDR and bracketing**: merge, deghost, highlight/shadow fusion.
+- **HDR and bracketing**: deghosting and advanced exposure fusion beyond the optional burst stack.
 - **Restoration and enhancement**: old-photo repair, upscaling, denoising, scratch removal.
 - **Subject and background**: portrait/product segmentation, background replacement, blur.
 - **Semantic scenes**: finer recognition of food, real estate, events, stage, street.
@@ -77,6 +78,18 @@ python scripts\photo-pipeline.py `
 - `--overwrite-originals`: dangerous, JPG/JPEG only, explicit user request only;
 - read the report and confirm `*-fixed.jpg` before keeping it.
 
+Optional burst pass (separate, non-destructive):
+
+```powershell
+python scripts\burst-detect.py `
+  --input "C:\photos" --output-dir "C:\photos\bursts" `
+  --stack --animate
+```
+
+The default only groups bursts and picks the best frame; add `--stack` and/or
+`--animate` explicitly. Stacking works best for static scenes/night; animated
+output is capped in width/frames.
+
 On Linux/WSL, run `bash scripts/setup-rt.sh` first and use `python3`; the pipeline
 auto-detects the extracted AppImage under `rt-5.13/squashfs-root`. On macOS the
 same Python flow is expected but not yet verified.
@@ -109,6 +122,7 @@ same Python flow is expected but not yet verified.
 
 - No face reshaping, face swap, sky replacement, or generative rewriting;
 - Clipped highlights, crushed blacks, and severe blur cannot be invented;
+- Burst stacking can ghost moving people; use best-frame or animation for those;
 - Scene detection is rule-based, not semantic understanding;
 - Detailed limits live in `references/`.
 
@@ -116,9 +130,11 @@ same Python flow is expected but not yet verified.
 
 - `references/limits.md`: tested strength limits and decision matrix
 - `references/portrait.md`: portrait capabilities and limits
+- `references/bursts.md`: burst grouping, stacking, animation, and limits
 - `references/styles.md`: B&W, dehaze, night, food
 - `references/formats.md`: input formats and dependencies
 - `scripts/photo-pipeline.py`: main pipeline
+- `scripts/burst-detect.py`: optional burst grouping/stack/animation
 - `scripts/setup-rt.sh`: Linux/WSL RawTherapee setup
 - `requirements.txt`: Python dependencies for Linux/macOS
 - `LICENSE` / `THIRD_PARTY_NOTICES.md`: 0BSD and third-party licenses
