@@ -10,7 +10,7 @@
 
 - 自动分诊：正常 / 明显问题 / 疑似问题，整图模糊单独提示；
 - 场景感知：人像、夜景、高调、风景、通用；
-- 三档强度：默认中档，可切最低 / 最高；
+- 四档强度：`min` 自然 / `medium` 均衡 / `high` 默认出片 / `max` 更重（允许调过头）；
 - 人像：皮肤平滑、眼白/牙齿轻微提亮，不瘦脸、不改五官；
 - 风格：黑白、轻/强去雾、夜景、食物，配置可扩展；
 - 选片：模糊、曝光异常、近似重复，只报告不删图；
@@ -28,7 +28,7 @@ HEIC 需要 `pillow-heif`；JXL 需要 `ffmpeg`（libjxl）。
 
 | 分类 | 处理 |
 | --- | --- |
-| 正常 | 默认中档美化；用户要求时用 `min` / `max` |
+| 正常 | 默认高挡美化；用户要求时用 `min` / `medium` / `max` |
 | 明显问题 | 保留原图，生成 `<原名>-fixed.jpg` 候选，再询问 |
 | 疑似问题 | 只给建议，不生成文件 |
 | 明显但无法修复 | 整图模糊等只提示重拍/检查对焦 |
@@ -56,12 +56,12 @@ $env:PYTHONPATH = "..\face-deps"
 
 python "$Skill\scripts\photo-pipeline.py" `
   --input "C:\photos" --output-dir "C:\photos" `
-  --strength medium `
+  --strength high `
   --temp-dir "C:\temp\photo-pipeline" `
   --report "C:\photos\pipeline-report.md"
 ```
 
-- `--strength min|medium|max`：默认 medium；
+- `--strength min|medium|high|max`：默认 `high`；`max` 会明显更重，给“就要好看”的用户。
 - `--dry-run`：只输出分诊计划；
 - `--temp-dir`：受限环境指定可写临时目录；
 - 跑完先看报告，再确认 `*-fixed.jpg` 是否保留。
@@ -77,7 +77,7 @@ pip install -r requirements.txt
 bash scripts/setup-rt.sh
 python3 scripts/photo-pipeline.py \
   --input "$HOME/photos" --output-dir "$HOME/photos" \
-  --strength medium \
+  --strength high \
   --report "$HOME/photos/pipeline-report.md"
 ```
 

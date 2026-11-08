@@ -1,29 +1,33 @@
 # Tested limits of one-click beauty
 
 Test set: 39 Panasonic RW2 files + 8 JPG files, RawTherapee 5.13,
-Auto-Matched Curve plus three look levels. All numbers were measured on the same
-batch; output is sRGB JPEG.
+Auto-Matched Curve plus four look levels. Measurements below use the original
+camera-match / look2 / look3 / look4 profiles; `look1` (the new `min` level) is a
+lighter profile and was not part of that 47-image run.
 
 ## Levels
 
-| Level | Profile | Notes |
+| Level | Profile | Intent |
 | --- | --- | --- |
-| `-rt` | `Auto-Matched Curve - ISO Low.pp3` only | Camera JPEG emulation; almost a no-op for JPG input |
-| `-rt2` | + `rt-look2.pp3`: Contrast 18 / Saturation 12 / Black -5 / Highlight 30 / Shadow 20 | General default |
-| `-rt3` | + `rt-look3.pp3`: Contrast 28 / Saturation 18 / Black -8 / Highlight 40 / Shadow 30 | Upper bound for low-saturation scenes |
-| `look4` | + `rt-look4.pp3`: Contrast 45 / Saturation 28 / Black -12 / Highlight 50 / Shadow 40 | Diagnostic only; deliberately excessive |
+| `min` | `rt-look1.pp3` | Natural, light touch |
+| `medium` | `rt-look2.pp3` | Balanced |
+| `high` (default) | `rt-look3.pp3` | Punchy, social-ready |
+| `max` | `rt-look4.pp3` | Extra; intentionally allowed to overdo it |
 
-## Full 47-image set
+## Measured reference
+
+| Metric | Camera match | look2 | look3 | look4 |
+| --- | ---: | ---: | ---: | ---: |
+| Mean saturation (47 images) | 22.8% | 28.6% | 31.9% | — |
 
 ```text
-Mean saturation: rt 22.8%  →  rt2 28.6%  →  rt3 31.9%
-rt→rt2: mean +5.8 (range +1.9 to +9.6)
-rt2→rt3: mean +3.2 (range +1.1 to +5.5)  ← diminishing returns
+camera → look2: mean +5.8 (range +1.9 to +9.6)
+look2 → look3: mean +3.2 (range +1.1 to +5.5)  ← diminishing returns
 ```
 
 ## By scene (saturation %)
 
-| Scene | rt | rt2 | rt3 | look4 |
+| Scene | Camera | look2 | look3 | look4 |
 | --- | ---: | ---: | ---: | ---: |
 | Normal city P1021913 | 32.1 | 41.1 | 46.4 | 54.8 |
 | Sunset silhouette P1021648 | 36.6 | 43.4 | 47.0 | 52.7 |
@@ -31,10 +35,10 @@ rt2→rt3: mean +3.2 (range +1.1 to +5.5)  ← diminishing returns
 | Overexposed P1021922 | 2.5 | 5.0 | 6.5 | 9.2 |
 | Saturated red flower P1022126 | 70.6 | 78.6 | 82.2 | 87.2 |
 
-Red-flower channel clipping: rt 0.6% → rt2 4.2% → rt3 7.1% → look4 11.9%.
+Red-flower channel clipping: camera 0.6% → look2 4.2% → look3 7.1% → look4 11.9%.
 
-Near-white pixels in the overexposed frame: rt 57.6% → rt2 53.9% → rt3 51.0%
-→ look4 49.6%; still unusable.
+Near-white pixels in the overexposed frame: camera 57.6% → look2 53.9% → look3
+51.0% → look4 49.6%; still unusable.
 
 ## Limits
 
@@ -43,12 +47,20 @@ Near-white pixels in the overexposed frame: rt 57.6% → rt2 53.9% → rt3 51.0%
 - JPG input barely changes (P1021642 saturation 15.0 → 14.8);
 - RAW restores camera color but adds little creative intent.
 
+**Default `high` (look3)**
+
+- Chosen for a punchy, social-ready look, not for documentary realism;
+- Already saturated subjects may lose channel detail; use `medium` when the
+  scene should stay natural;
+- It is intentionally stronger than the old default (`look2`).
+
 **Safe upper bound = before channels start clipping**
 
-- Low-saturation scenes (overcast, city, fog) can take rt3;
+- Low-saturation scenes (overcast, city, fog) can take look3;
 - Already-saturated subjects (red flowers, neon, skin) start losing channel
-  detail at rt2/rt3;
-- look4 is visibly over-saturated; it exists to show where it breaks.
+  detail at look2/look3;
+- `max` (look4) is visibly over-saturated and may clip; it exists because some
+  users explicitly want the exaggerated result.
 
 **Absolute limits**
 
@@ -63,16 +75,17 @@ Near-white pixels in the overexposed frame: rt 57.6% → rt2 53.9% → rt3 51.0%
 
 | Scene | Recommendation |
 | --- | --- |
-| Normal daylight, city, overcast | `-rt2` default; `-rt3` for low saturation |
-| Sunset/night/silhouette | `-rt2` upper bound; keep the mood; do not lift shadows |
-| Flowers/neon/skin | `-rt` or `-rt2`; check channel clipping first |
+| Normal daylight, city, overcast | `high` default; `medium` for a natural look |
+| Sunset/night/silhouette | `medium` or `high`; keep the mood; do not lift shadows |
+| Flowers/neon/skin | `min` or `medium`; check channel clipping first |
 | Over/under-exposed | Do not auto-fix; correct exposure manually |
-| JPG input | Expect small gains; look2 changes more but watch clipped whites |
+| JPG input | `medium`/`high`; `max` clips highlights more easily |
+| User says "just make it beautiful" | `high`; `max` only when they accept an overdone look |
 
 ## Rules of use
 
 1. Check first, choose a level second; anomalies are reported, not auto-fixed.
 2. Run 1–3 samples before a batch and confirm saturated subjects survive.
-3. Use a new suffix per batch (`-rt2`/`-rt3`) and keep the previous version for comparison.
+3. Use a new suffix per batch and keep the previous version for comparison.
 4. State clearly in the report which looks are scene-intent (bright sky, night,
    silhouette) and which are exposure anomalies.

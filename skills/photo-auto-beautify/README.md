@@ -7,7 +7,7 @@ A shell-only photo pipeline skill. Normal photos are beautified automatically;
 obvious problems produce a fixed candidate for confirmation; suspect images get
 suggestions only.
 
-- Default medium beauty; `--strength min/medium/max` selects the level.
+- Default high beauty; `--strength min/medium/high/max` selects the level.
 - Normal RAW → a JPG with the same name; other formats → `<name>-beauty.jpg`.
 - Obvious over/under-exposure → keep the original, write `<name>-fixed.jpg`, ask first.
 - Suspect or blurred images → suggestions only, no file.
@@ -43,7 +43,7 @@ Windows example:
 ```powershell
 $env:PYTHONPATH = "..\face-deps"
 python scripts\photo-pipeline.py --input "C:\photos" --output-dir "C:\photos" `
-  --strength medium --temp-dir "C:\temp\photo-pipeline" `
+  --strength high --temp-dir "C:\temp\photo-pipeline" `
   --report "C:\photos\pipeline-report.md"
 ```
 
@@ -57,7 +57,7 @@ pip install -r requirements.txt
 bash scripts/setup-rt.sh
 python3 scripts/photo-pipeline.py \
   --input "$HOME/photos" --output-dir "$HOME/photos" \
-  --strength medium --report "$HOME/photos/pipeline-report.md"
+  --strength high --report "$HOME/photos/pipeline-report.md"
 ```
 
 Linux needs Pillow/NumPy/OpenCV/pillow-heif in the active Python environment.

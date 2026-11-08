@@ -46,8 +46,13 @@ DEFAULT_RM = os.environ.get("RAWMAKASE") or os.path.join(
     os.environ.get("LOCALAPPDATA", ""), "Programs", "RAWmakase", "rawmakase.exe"
 )
 DEFAULT_MODEL = os.path.join(SKILL, "assets", "models", "face_detection_yunet_2023mar.onnx")
-LOOKS = {"min": "rt-look1.pp3", "medium": "rt-look2.pp3", "max": "rt-look3.pp3"}
-FACE_STRENGTH = {"min": 1, "medium": 2, "max": 3}
+LOOKS = {
+    "min": "rt-look1.pp3",
+    "medium": "rt-look2.pp3",
+    "high": "rt-look3.pp3",
+    "max": "rt-look4.pp3",
+}
+FACE_STRENGTH = {"min": 1, "medium": 2, "high": 3, "max": 3}
 
 
 def load_face_module():
@@ -221,7 +226,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--input", required=True)
     p.add_argument("--output-dir")
-    p.add_argument("--strength", choices=["min", "medium", "max"], default="medium")
+    p.add_argument("--strength", choices=["min", "medium", "high", "max"], default="high")
     p.add_argument("--rt-root", default=DEFAULT_RT)
     p.add_argument("--rawmakase", default=DEFAULT_RM)
     p.add_argument("--model", default=DEFAULT_MODEL)
@@ -373,9 +378,9 @@ def main():
             if r["class"] == "error":
                 f.write(f"| {r['file']} | {r.get('error') or r['note']} |\n")
         f.write("\n## Plan\n\n")
-        f.write("- Normal photos use look2 by default; `--strength min/max` switches to look1/look3.\n")
+        f.write("- Normal photos use look3 (`high`) by default; `min`/`medium`/`max` map to look1/look2/look4.\n")
         f.write("- Portraits add skin smoothing (level 1/2/3); no face reshaping.\n")
-        f.write("- Night uses ISO High + look2; high-key/food use look2.\n")
+        f.write("- Night uses ISO High + the selected look; high-key/food use the selected look.\n")
         f.write("- Non-RAW/JPEG/PNG/TIFF inputs are normalized to a working TIFF; obvious overexposed RAW uses RAWmakase XMP -2.5EV.\n")
         f.write("- No overwrite by default; `--overwrite-originals` applies only to normal JPG/JPEG; other formats keep their originals.\n")
         f.write("- Suspect images produce no files; previews and temporary files are cleaned up.\n")

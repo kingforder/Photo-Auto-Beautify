@@ -7,7 +7,7 @@ license: 0BSD
 # Photo Auto Beautify
 
 Turn a folder of originals into deliverable results: triage first, then either
-beautify, produce a fixed candidate, or suggest only. The default is a medium
+beautify, produce a fixed candidate, or suggest only. The default is the high
 look; originals are never modified; only originals and results remain.
 
 ## Capability map
@@ -15,7 +15,7 @@ look; originals are never modified; only originals and results remain.
 | Area | Status | Notes |
 | --- | --- | --- |
 | Triage | Stable | Normal / obvious problem / suspect; whole-frame blur is flagged separately |
-| Exposure and color | Stable | Auto white balance, exposure, highlights/shadows, contrast, saturation; three strengths |
+| Exposure and color | Stable | Auto white balance, exposure, highlights/shadows, contrast, saturation; four strengths |
 | Scene awareness | Rule-based | Portrait, night, high-key, landscape, general; picks a preset per scene |
 | Portrait | Conservative | Skin smoothing, slight sclera/teeth brightening; no face reshaping |
 | Styles | Extensible | B&W, dehaze, night, food; more looks can be added |
@@ -41,7 +41,7 @@ scripts and references.
 
 | Class | Action |
 | --- | --- |
-| Normal | Medium beauty by default; `min`/`max` when the user asks |
+| Normal | High beauty by default; `min`/`medium`/`max` when the user asks |
 | Obvious problem | Keep the original, write a `<name>-fixed.jpg` candidate, then ask |
 | Suspect | Suggestions only; no file |
 | Obvious but unrepairable | Whole-frame blur etc.; recommend a reshoot or focus check |
@@ -68,7 +68,7 @@ insists and accepts the irreversible result should you add
 ```powershell
 python scripts\photo-pipeline.py `
   --input "C:\photos" --output-dir "C:\photos" `
-  --strength medium `
+  --strength high `
   --report "C:\photos\pipeline-report.md"
 ```
 
@@ -93,6 +93,8 @@ same Python flow is expected but not yet verified.
 ## Scenes and styles
 
 - Scenes: `portrait`, `night`, `highkey`, `landscape`, `general`;
+- Strength: `min` natural, `medium` balanced, `high` default punchy, `max` extra
+  (intentionally allowed to overdo it);
 - Portraits include skin smoothing; strength follows the selected level;
 - Styles: B&W, light/strong dehaze, night, food; looks live in `assets/looks/`;
 - The main pipeline only applies the scene look; B&W/dehaze are invoked

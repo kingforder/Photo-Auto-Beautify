@@ -7,7 +7,7 @@
 A shell-only photo pipeline skill. It triages a folder into
 **normal / obvious problem / suspect**, then:
 
-- beautifies normal photos at medium strength by default;
+- beautifies normal photos at the high strength by default;
 - keeps the original and writes a `*-fixed.jpg` candidate for obvious problems;
 - only reports suggestions for suspect or unrepairable images;
 - removes previews and temporary files, leaving originals + results.
@@ -50,12 +50,13 @@ $env:PYTHONPATH = "..\face-deps"
 
 python "$Skill\scripts\photo-pipeline.py" `
   --input "C:\photos" --output-dir "C:\photos" `
-  --strength medium `
+  --strength high `
   --temp-dir "C:\temp\photo-pipeline" `
   --report "C:\photos\pipeline-report.md"
 ```
 
-- `--strength min|medium|max` — default medium.
+- `--strength min|medium|high|max` — default `high`; `max` is intentionally
+  over-the-top for users who want maximum punch.
 - `--dry-run` — plan only, no output.
 - Normal RAW → `<name>.jpg`; other normal formats → `<name>-beauty.jpg`.
 - Obvious → `<name>-fixed.jpg`; ask the user before keeping it.
@@ -72,7 +73,7 @@ pip install -r requirements.txt
 bash scripts/setup-rt.sh
 python3 scripts/photo-pipeline.py \
   --input "$HOME/photos" --output-dir "$HOME/photos" \
-  --strength medium \
+  --strength high \
   --report "$HOME/photos/pipeline-report.md"
 ```
 
