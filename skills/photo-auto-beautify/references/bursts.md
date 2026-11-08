@@ -68,7 +68,8 @@ and cleanup results. The original files stay where they are unless
 
 `--apply-cleanup` is intentionally opt-in:
 
-- selected best frames are copied to `bursts/best/` and stay in place;
+- selected best frames are copied to `bursts/best/` and stay in place; only
+  frames with valid image metrics are eligible when valid alternatives exist;
 - the remaining **burst RAW** files are moved to `<input>/待删除`;
 - non-burst RAW files are not touched;
 - no file is deleted; review the trash folder and remove it yourself;

@@ -301,7 +301,12 @@ def best_frame(group):
 
 
 def best_frames(group, count):
-    return sorted(group, key=lambda f: (f["score"], f["sharp"]), reverse=True)[:max(1, count)]
+    valid = [
+        f for f in group
+        if f.get("hash") is not None or f.get("score", 0) > 0
+    ]
+    pool = valid or group
+    return sorted(pool, key=lambda f: (f["score"], f["sharp"]), reverse=True)[:max(1, count)]
 
 
 def unique_path(path):
