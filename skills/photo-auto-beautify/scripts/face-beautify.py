@@ -18,6 +18,9 @@ import sys
 import numpy as np
 from PIL import Image, ImageOps
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import image_formats  # noqa: E402
+
 try:
     import cv2
 except ImportError:
@@ -82,7 +85,49 @@ def feather(mask, sigma):
     return cv2.GaussianBlur(mask, (0, 0), max(1.0, sigma))
 
 
-def process_face(img, face, strength, do_eyes, do_teeth):
+def whiten_skin(out, face_mask, strength, color=True):
+    """Lift midtone skin; optionally neutralize red/yellow."""
+    lab = cv2.cvtColor(out, cv2.COLOR_BGR2LAB).astype(np.float32)
+    l, a, b = cv2.split(lab)
+    mask = face_mask.astype(np.float32)
+    # Weight by luminance: dark under-eye/glasses shadows stay dark; midtone
+    # cheeks/forehead receive the lift.
+    ln = l / 255.0
+    w = np.clip((ln - 0.32) / 0.30, 0.0, 1.0)
+    w = w * w * (3.0 - 2.0 * w)
+    wm = mask * w
+    l = l + 16.0 * strength * wm
+    if color:
+        a = 128.0 + (a - 128.0) * (1.0 - 0.25 * strength * wm)
+        b = 128.0 + (b - 128.0) * (1.0 - 0.30 * strength * wm)
+    lab = cv2.merge([
+        np.clip(l, 0, 255),
+        np.clip(a, 0, 255),
+        np.clip(b, 0, 255),
+    ]).astype(np.uint8)
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+
+def tone_lips(out, mouth_center, bw, bh, strength):
+    """Slightly reduce lip redness so a whitened face does not look unbalanced."""
+    h, w = out.shape[:2]
+    m = np.zeros((h, w), np.uint8)
+    cv2.ellipse(
+        m,
+        (int(mouth_center[0]), int(mouth_center[1])),
+        (int(bw * 0.30), int(bh * 0.12)),
+        0, 0, 360, 255, -1,
+    )
+    m = feather(m, bw * 0.01).astype(np.float32) / 255.0
+    lab = cv2.cvtColor(out, cv2.COLOR_BGR2LAB).astype(np.float32)
+    l, a, b = cv2.split(lab)
+    a = 128.0 + (a - 128.0) * (1.0 - 0.35 * strength * m)
+    b = 128.0 + (b - 128.0) * (1.0 - 0.20 * strength * m)
+    lab = cv2.merge([l, np.clip(a, 0, 255), np.clip(b, 0, 255)]).astype(np.uint8)
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+
+def process_face(img, face, strength, do_eyes, do_teeth, whiten_only=False):
     h, w = img.shape[:2]
     x, y, bw, bh = [float(v) for v in face[:4]]
     x, y = max(0, x), max(0, y)
@@ -113,6 +158,14 @@ def process_face(img, face, strength, do_eyes, do_teeth):
             (int(bw * 0.17), int(bh * 0.07)),
             0, 0, 360, 0, -1,
         )
+        # Protect the eye socket and the shadow under glasses from smoothing
+        # and whitening; otherwise they turn into gray patches.
+        cv2.ellipse(
+            face_mask,
+            (int(ex), int(ey + bh * 0.04)),
+            (int(bw * 0.19), int(bh * 0.10)),
+            0, 0, 360, 0, -1,
+        )
     cv2.ellipse(
         face_mask,
         (int(mouth_center[0]), int(mouth_center[1])),
@@ -120,13 +173,17 @@ def process_face(img, face, strength, do_eyes, do_teeth):
         0, 0, 360, 0, -1,
     )
     face_mask = feather(face_mask, bw * 0.02).astype(np.float32) / 255.0
+    if whiten_only:
+        return whiten_skin(img, face_mask, strength, color=False)
 
     smooth = cv2.bilateralFilter(img, 0, 28, max(6, int(bw * 0.02)))
     # Keep some original micro-texture so skin does not become plastic.
-    smooth = cv2.addWeighted(smooth, 0.82, img, 0.18, 0)
+    smooth = cv2.addWeighted(smooth, 0.70, img, 0.30, 0)
     alpha = (face_mask * strength)[..., None]
     out = img.astype(np.float32) * (1 - alpha) + smooth.astype(np.float32) * alpha
     out = np.clip(out, 0, 255).astype(np.uint8)
+    out = whiten_skin(out, face_mask, strength)
+    out = tone_lips(out, mouth_center, bw, bh, strength)
 
     if do_eyes:
         hsv = cv2.cvtColor(out, cv2.COLOR_BGR2HSV)
@@ -156,8 +213,8 @@ def process_face(img, face, strength, do_eyes, do_teeth):
     return out
 
 
-def beautify(path, model, strength, do_eyes, do_teeth, min_face_ratio=0.04, max_faces=3):
-    pil = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
+def beautify(path, model, strength, do_eyes, do_teeth, min_face_ratio=0.04, max_faces=3, whiten_only=False):
+    pil = image_formats.load_rgb(path)
     img = cv2.cvtColor(np.asarray(pil), cv2.COLOR_RGB2BGR)
     faces = detect(img, model, 0.6)
     all_faces = faces
@@ -171,7 +228,7 @@ def beautify(path, model, strength, do_eyes, do_teeth, min_face_ratio=0.04, max_
         return None, len(all_faces), f"group photo ({len(all_faces)} faces)"
     out = img
     for face in faces:
-        out = process_face(out, face, strength, do_eyes, do_teeth)
+        out = process_face(out, face, strength, do_eyes, do_teeth, whiten_only)
     return cv2.cvtColor(out, cv2.COLOR_BGR2RGB), len(faces), "ok"
 
 
@@ -188,6 +245,7 @@ def main():
     p.add_argument("--model", default=DEFAULT_MODEL)
     p.add_argument("--no-eyes", action="store_true")
     p.add_argument("--no-teeth", action="store_true")
+    p.add_argument("--whiten-only", action="store_true", help="only whiten skin; no smoothing/lip/eye changes")
     p.add_argument("--dry-run", action="store_true", help="only report detected faces")
     p.add_argument("--report", default="face-report.md")
     args = p.parse_args()
@@ -209,7 +267,7 @@ def main():
             out_img, count, reason = beautify(
                 src, args.model, STRENGTH[args.strength],
                 not args.no_eyes, not args.no_teeth,
-                args.min_face_ratio, args.max_faces,
+                args.min_face_ratio, args.max_faces, args.whiten_only,
             )
         except Exception as e:
             rows.append({"file": name, "faces": 0, "status": f"error: {e}"})

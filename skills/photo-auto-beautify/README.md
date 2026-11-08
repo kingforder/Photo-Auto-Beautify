@@ -8,6 +8,9 @@ obvious problems produce a fixed candidate for confirmation; suspect images get
 suggestions only.
 
 - Default high beauty; `--strength min/medium/high/max` selects the level.
+- Portraits use a light base plus a mask-free global skin-tone LUT.
+- No face mask, smoothing, or local whitening: no cutout edges or pixel artifacts.
+- A saturation guard picks a neutral portrait base when the face is already saturated.
 - Normal RAW → a JPG with the same name; other formats → `<name>-beauty.jpg`.
 - Obvious over/under-exposure → keep the original, write `<name>-fixed.jpg`, ask first.
 - Suspect or blurred images → suggestions only, no file.

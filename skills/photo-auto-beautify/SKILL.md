@@ -17,7 +17,7 @@ look; originals are never modified; only originals and results remain.
 | Triage | Stable | Normal / obvious problem / suspect; whole-frame blur is flagged separately |
 | Exposure and color | Stable | Auto white balance, exposure, highlights/shadows, contrast, saturation; four strengths |
 | Scene awareness | Rule-based | Portrait, night, high-key, landscape, general; picks a preset per scene |
-| Portrait | Conservative | Skin smoothing, slight sclera/teeth brightening; no face reshaping |
+| Portrait | Conservative | Light base + global skin-tone LUT; no face mask, smoothing, or local whitening |
 | Styles | Extensible | B&W, dehaze, night, food; more looks can be added |
 | Culling | Stable | Blur, exposure outliers, near-duplicates; reports only, never deletes |
 | Formats | Broad | RAW, JPEG, PNG, TIFF, WebP, AVIF, HEIC/HEIF, JXL, BMP, GIF |
@@ -93,9 +93,13 @@ same Python flow is expected but not yet verified.
 ## Scenes and styles
 
 - Scenes: `portrait`, `night`, `highkey`, `landscape`, `general`;
-- Strength: `min` natural, `medium` balanced, `high` default punchy, `max` extra
-  (intentionally allowed to overdo it);
-- Portraits include skin smoothing; strength follows the selected level;
+- Strength: `min` natural, `medium` balanced, `high` default punchy for general
+  scenes, `max` extra (intentionally allowed to overdo it);
+- Portraits use a light base look followed by a **global skin-tone LUT**;
+  there is no face mask, smoothing, or local whitening in the default path;
+- The LUT is color-based and smooth; face, neck and hands share the same skin tone;
+- If detected face saturation is already high, a neutral portrait base is used;
+- `max` uses a stronger color-safe portrait base, still without masks;
 - Styles: B&W, light/strong dehaze, night, food; looks live in `assets/looks/`;
 - The main pipeline only applies the scene look; B&W/dehaze are invoked
   separately through `rt-batch.ps1` or the look profiles and are not mixed in;

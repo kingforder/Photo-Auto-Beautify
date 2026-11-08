@@ -1,4 +1,19 @@
-# Portrait / face beauty module
+# Portrait color pipeline
+
+The default pipeline is deliberately mask-free:
+
+- a light portrait base look;
+- a global skin-tone LUT that lifts skin-like colors smoothly;
+- no face mask, no skin smoothing, no local whitening.
+
+Because the transform is color-based and continuous, there are no cutout edges
+or pixel-level transition artifacts. Face, neck and hands share the same skin
+tone, so they stay consistent.
+
+## Legacy face-beautify module (optional, not used by default)
+
+The old mask-based module below remains available for experiments (`face-beautify.py`),
+but the default pipeline does not call it.
 
 Conservative by design: skin smoothing plus slight sclera/teeth brightening.
 **No face reshaping, no identity changes, no generated content.**
@@ -11,6 +26,11 @@ Conservative by design: skin smoothing plus slight sclera/teeth brightening.
 - Build an elliptical face mask that excludes eyes, eyebrows and lips;
 - Smooth skin with a bilateral filter while retaining 18% of the original
   micro-texture to avoid a plastic look;
+- Lift skin luminance and pull red/yellow toward neutral inside the face mask,
+  for a brighter, less sallow complexion;
+- Whitening is weighted by luminance: eye sockets and shadowed skin under
+  glasses stay dark instead of turning into gray patches;
+- Reduce lip redness slightly so a whitened face does not look unbalanced;
 - Optionally brighten low-saturation, bright sclera/teeth regions slightly;
 - Skip images with zero usable faces and note them in the report;
 - Default `--min-face-ratio 0.04`: faces narrower than 4% of the frame are
@@ -84,7 +104,8 @@ On the test folder (39 RAW previews + 8 JPG):
 
 - Profiles, occlusion, group photos, backlight and low resolution reduce
   detection/mask quality;
-- Deep or highlighted skin may become too pale or show edge artifacts; review samples;
+- Deep or highlighted skin may become too pale after whitening; review samples
+  and lower the strength when needed;
 - Level 3 looks fake easily; default to 1–2;
 - Acne, scars and under-eye structure are not handled; only global smoothing;
 - Do not apply by default to news, documentary or ID photos; identity and

@@ -16,6 +16,11 @@ lighter profile and was not part of that 47-image run.
 
 > Naming change: the previous `max` level (look3) is now `high`; `max` selects
 > look4, the extra over-the-top level.
+>
+> Portrait `high` uses the light `rt-portrait-light.pp3` (Contrast 10 /
+> Saturation 2), followed by a mask-free global skin-tone LUT. `max` uses a
+> stronger `rt-look2-portrait.pp3`. If the detected face saturation is already
+> high, neutral-saturation variants are used.
 
 ## Measured reference
 

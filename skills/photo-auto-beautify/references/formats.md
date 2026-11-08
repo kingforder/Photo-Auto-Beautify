@@ -14,6 +14,9 @@ normal formats produce `<name>-beauty.jpg`.
 | BMP | Pillow → TIFF | Supported |
 | GIF (static first frame) | Pillow → working TIFF | Supported (first frame) |
 
+Embedded ICC profiles are honored: Xiaomi's DCI-P3 JPEGs are converted to sRGB
+for analysis/format conversion, so their colors are not mistaken for sRGB.
+
 ## Dependencies
 
 - `opencv-python-headless`, `numpy`, `Pillow`: portraits, culling, format conversion;

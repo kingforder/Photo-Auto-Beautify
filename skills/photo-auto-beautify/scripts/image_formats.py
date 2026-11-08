@@ -4,15 +4,19 @@
 RAW and JPEG/PNG/TIFF go straight to RawTherapee. WebP/AVIF/HEIC/HEIF/BMP/GIF
 are decoded with Pillow (HEIC needs pillow-heif), JPEG XL with ffmpeg, and
 written to a temporary 16-bit TIFF for RawTherapee.
+
+Embedded ICC profiles (for example Xiaomi's DCI-P3 JPEGs) are converted to
+sRGB before analysis/conversion, so P3 files are not mistaken for sRGB.
 """
 
 import glob
+import io
 import os
 import shutil
 import subprocess
 import sys
 
-from PIL import Image
+from PIL import Image, ImageCms, ImageOps
 
 RAW_EXT = (
     ".3fr", ".ari", ".arw", ".bay", ".cr2", ".cr3", ".crw", ".dcr", ".dng",
@@ -57,8 +61,20 @@ def ensure_heif():
 
 
 def load_rgb(path):
+    """Load with EXIF orientation and convert embedded ICC (e.g. DCI-P3) to sRGB."""
     ensure_heif()
     with Image.open(path) as im:
+        im = ImageOps.exif_transpose(im)
+        icc = im.info.get("icc_profile")
+        if icc:
+            try:
+                src = ImageCms.ImageCmsProfile(io.BytesIO(icc))
+                dst = ImageCms.createProfile("sRGB")
+                return ImageCms.profileToProfile(
+                    im, src, dst, outputMode="RGB", renderingIntent=0
+                )
+            except Exception:
+                pass
         return im.convert("RGB")
 
 

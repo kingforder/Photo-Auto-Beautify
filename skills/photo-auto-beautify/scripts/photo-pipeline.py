@@ -52,7 +52,14 @@ LOOKS = {
     "high": "rt-look3.pp3",
     "max": "rt-look4.pp3",
 }
-FACE_STRENGTH = {"min": 1, "medium": 2, "high": 3, "max": 3}
+# Portrait base is deliberately one step below general "medium": light contrast,
+# low saturation, then a mask-free global skin-tone LUT.
+PORTRAIT_LOOKS = {
+    "min": "rt-portrait-light.pp3",
+    "medium": "rt-portrait-light.pp3",
+    "high": "rt-portrait-light.pp3",
+    "max": "rt-look2-portrait.pp3",
+}
 
 
 def load_face_module():
@@ -72,7 +79,7 @@ def run(cmd):
 
 
 def measure(path, face_mod, model):
-    pil = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
+    pil = image_formats.load_rgb(path)
     img = cv2.cvtColor(np.asarray(pil), cv2.COLOR_RGB2BGR)
     h, w = img.shape[:2]
     scale = min(1.0, 1200.0 / max(h, w))
@@ -84,6 +91,16 @@ def measure(path, face_mod, model):
     p5, p95 = np.percentile(lum, [5, 95])
     faces = face_mod.detect(img, model, 0.6)
     faces = [f for f in faces if float(f[2]) >= w * 0.04]
+    hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
+    sat = float(hsv[..., 1].mean() / 255.0 * 100)
+    face_sat = 0.0
+    if faces:
+        f = max(faces, key=lambda z: float(z[2]) * float(z[3]))
+        x, y, bw, bh = [float(v) * scale for v in f[:4]]
+        x1, y1 = max(0, int(x)), max(0, int(y))
+        x2, y2 = min(hsv.shape[1], int(x + bw)), min(hsv.shape[0], int(y + bh))
+        if x2 > x1 and y2 > y1:
+            face_sat = float(hsv[y1:y2, x1:x2, 1].mean() / 255.0 * 100)
     return {
         "mean": float(lum.mean()),
         "range": float(p95 - p5),
@@ -91,6 +108,8 @@ def measure(path, face_mod, model):
         "dark": float((lum <= 10).mean() * 100),
         "sharp": sharp,
         "faces": len(faces),
+        "sat": sat,
+        "face_sat": face_sat,
     }
 
 
@@ -172,7 +191,7 @@ def rt_profiles(rt):
     raise FileNotFoundError(f"RawTherapee profiles folder not found under {rt!r}")
 
 
-def render_rt(src, dst, is_raw, scene, strength, rt, tmp):
+def render_rt(src, dst, is_raw, scene, strength, rt, tmp, m=None):
     cli = rt_tool(rt)
     profiles = []
     if is_raw:
@@ -181,7 +200,14 @@ def render_rt(src, dst, is_raw, scene, strength, rt, tmp):
         if not os.path.isfile(auto):
             raise FileNotFoundError(f"missing RawTherapee profile: {auto}")
         profiles.append(auto)
-    profiles.append(os.path.join(SKILL, "assets", "looks", LOOKS[strength]))
+    look_name = (PORTRAIT_LOOKS if scene == "portrait" else LOOKS)[strength]
+    if scene == "portrait" and m and m.get("face_sat", 0) >= 30:
+        # Already saturated: do not push it further.
+        if strength == "high":
+            look_name = "rt-portrait-light-neutral.pp3"
+        elif strength == "max":
+            look_name = "rt-look2-portrait-neutral.pp3"
+    profiles.append(os.path.join(SKILL, "assets", "looks", look_name))
     out = os.path.join(tmp, os.path.splitext(os.path.basename(src))[0] + "-rt.jpg")
     cmd = [cli, "-o", out]
     for p in profiles:
@@ -192,14 +218,29 @@ def render_rt(src, dst, is_raw, scene, strength, rt, tmp):
     return dst
 
 
-def apply_face(path, dst, strength, face_mod, model):
-    out, count, reason = face_mod.beautify(
-        path, model, FACE_STRENGTH[strength], True, True, 0.04, 3
+def global_skin_lut(src, dst):
+    """Mask-free skin-tone whitening via a smooth per-pixel color transform."""
+    arr = np.asarray(image_formats.load_rgb(src)).astype(np.uint8)
+    hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV).astype(np.float32)
+    hue = hsv[..., 0] * 2.0
+    sat = hsv[..., 1] / 255.0
+    val = hsv[..., 2] / 255.0
+    w = (
+        np.exp(-((hue - 30.0) / 18.0) ** 2)
+        * np.exp(-((sat - 0.35) / 0.22) ** 2)
+        * np.clip((val - 0.10) / 0.25, 0.0, 1.0)
     )
-    if reason != "ok":
-        return 0, reason
+    lab = cv2.cvtColor(arr, cv2.COLOR_RGB2LAB).astype(np.float32)
+    l, a, b = cv2.split(lab)
+    l = l + 9.0 * w
+    a = 128.0 + (a - 128.0) * (1.0 - 0.10 * w)
+    b = 128.0 + (b - 128.0) * (1.0 - 0.16 * w)
+    out = cv2.cvtColor(
+        cv2.merge([l, np.clip(a, 0, 255), np.clip(b, 0, 255)]).astype(np.uint8),
+        cv2.COLOR_LAB2RGB,
+    )
     Image.fromarray(out).save(dst, quality=95, subsampling=0)
-    return count, "ok"
+    return dst
 
 
 def fix_over(src, dst, is_raw, rt, rm, tmp):
@@ -308,12 +349,14 @@ def main():
             if cls == "ok":
                 dst = beauty_name(r["src"], r["raw"], outdir, args.overwrite_originals)
                 tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(r["src"]))[0] + "-beauty.jpg")
-                render_rt(src, tmp_out, r["raw"], r["scene"], args.strength, args.rt_root, tmp)
+                render_rt(src, tmp_out, r["raw"], r["scene"], args.strength, args.rt_root, tmp, m)
                 if r["scene"] == "portrait":
-                    count, reason = apply_face(tmp_out, dst, args.strength, face_mod, args.model)
-                    if reason != "ok":
+                    try:
+                        global_skin_lut(tmp_out, dst)
+                        r["note"] = "global skin LUT"
+                    except Exception:
                         shutil.copy2(tmp_out, dst)
-                    r["note"] = f"face={count}"
+                        r["note"] = "skin LUT failed; base only"
                 else:
                     shutil.copy2(tmp_out, dst)
                 if os.path.abspath(dst) == os.path.abspath(r["src"]):
@@ -378,8 +421,9 @@ def main():
             if r["class"] == "error":
                 f.write(f"| {r['file']} | {r.get('error') or r['note']} |\n")
         f.write("\n## Plan\n\n")
-        f.write("- Normal photos use look3 (`high`) by default; `min`/`medium`/`max` map to look1/look2/look4.\n")
-        f.write("- Portraits add skin smoothing (level 1/2/3); no face reshaping.\n")
+        f.write("- General scenes use look3 (`high`) by default; portraits use their own light base.\n")
+        f.write("- Portrait: light base + global skin-tone LUT; no face mask, smoothing, or local whitening.\n")
+        f.write("- A high face-saturation reading switches to a neutral portrait base.\n")
         f.write("- Night uses ISO High + the selected look; high-key/food use the selected look.\n")
         f.write("- Non-RAW/JPEG/PNG/TIFF inputs are normalized to a working TIFF; obvious overexposed RAW uses RAWmakase XMP -2.5EV.\n")
         f.write("- No overwrite by default; `--overwrite-originals` applies only to normal JPG/JPEG; other formats keep their originals.\n")
