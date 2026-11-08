@@ -1,11 +1,15 @@
-# Photo Auto Beautify · Local, free batch photo beautification
+# Photo Auto Beautify · Agent Skill for local batch photo beautification
 
-> No subscription, no uploads, no one-by-one editing: one command turns a whole
+> **Import this Skill into an AI agent; it is not an end-user CLI manual.**
+> The agent translates the user's preferences into presets, levels, burst
+> choices, and cleanup behavior, then runs the local scripts internally.
+
+> No subscription, no uploads, no one-by-one editing: the backend turns a whole
 > batch of RAW/JPG/HEIC files into deliverable results.
 
-A shell-only photo pipeline skill. Normal photos are beautified automatically;
-obvious problems produce a fixed candidate for confirmation; suspect images get
-suggestions only.
+A shell-only backend for an Agent Skill. Normal photos are beautified
+automatically; obvious problems produce a fixed candidate for confirmation;
+suspect images get suggestions only.
 
 - Default high beauty; `--strength min/medium/high/max` selects the level.
 - Portraits use a light base plus a mask-free global skin-tone LUT.

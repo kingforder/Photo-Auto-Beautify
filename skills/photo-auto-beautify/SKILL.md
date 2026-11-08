@@ -1,14 +1,47 @@
 ---
 name: photo-auto-beautify
-description: Local, free batch photo beautification: no uploads, no subscription; triage, scene-aware color, portrait and style presets, culling, and mainstream formats; one command per batch, originals preserved.
+description: Agent Skill for local, free batch photo beautification. Import it into an AI agent; the agent adapts presets, levels, and burst cleanup to the user's taste and runs the local scripts. Triage, scene-aware color, portraits, bursts, culling, mainstream formats; originals preserved.
 license: 0BSD
 ---
 
 # Photo Auto Beautify
 
+> **This is an Agent Skill, not a command-line manual.**
+>
+> Import it into an agent. The agent should understand the user's preferences,
+> choose/adjust the beauty level and options, and run the scripts internally.
+> The CLI examples below are implementation details for the agent (and for
+> auditing/debugging), not instructions the end user should have to memorize.
+
 Turn a folder of originals into deliverable results: triage first, then either
 beautify, produce a fixed candidate, or suggest only. The default is the high
 look; originals are never modified; only originals and results remain.
+
+## How the agent should use this Skill
+
+1. **Translate intent, not flags.** “自然一点 / 不要假白 / 皮肤白一点 /
+   保留眼镜阴影 / 连拍只留最好的” are preferences. Choose the closest
+   strength, portrait base, LUT behavior, burst mode, and cleanup policy.
+2. **Inspect before deciding.** Read the triage report and scene counts; do not
+   blindly apply the same level to portraits, night, landscape, and bursts.
+3. **Stay inside the documented boundaries.** The agent may tune levels,
+   profiles, burst thresholds, and cleanup choices, but must not invent face
+   reshaping, sky replacement, or generative edits.
+4. **Confirm destructive choices.** Moving originals to `待删除` requires
+   explicit user approval; never silently delete or overwrite originals.
+5. **Explain the tradeoff briefly.** For example: “更白但可能损失阴影” or
+   “这组有人物走动，堆叠会鬼影，建议用动图/最佳帧”.
+
+The agent can adjust:
+
+| User preference | Agent action |
+| --- | --- |
+| “自然一点 / 不要假白” | Prefer lower portrait base / neutral look; keep shadows |
+| “脸再白一点” | Adjust portrait whitening/LUT strength within safe limits |
+| “连拍只留最好的” | Set `--best-per-burst`, verify best frames, then cleanup |
+| “不要动原片” | Skip `--apply-cleanup`; keep best frames in place |
+| “要动图 / 不要堆叠” | Enable animation, skip stack; respect motion guards |
+| “这组是风景/夜景” | Use the matching scene look; do not force portrait treatment |
 
 ## Capability map
 

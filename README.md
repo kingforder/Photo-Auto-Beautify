@@ -1,10 +1,16 @@
 # Photo Auto Beautify
 
-**Local, free, batch photo beautification for AI agents.**
+**An Agent Skill for local, free, batch photo beautification.**
 
 **English** | [中文](README.zh-CN.md)
 
-A shell-only photo pipeline skill. It triages a folder into
+> **Import this Skill into an AI agent; it is not a CLI manual for end users.**
+>
+> The agent should read the user's taste and constraints, choose the beauty
+> level/preset, and run the scripts internally. CLI flags are implementation
+> details for the agent, not something users need to memorize.
+
+The Skill has a shell-only backend. It triages a folder into
 **normal / obvious problem / suspect**, then:
 
 - beautifies normal photos at the high strength by default;
@@ -16,7 +22,8 @@ A shell-only photo pipeline skill. It triages a folder into
 
 Built for RAW and mainstream raster formats (JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL/
 BMP/GIF), with scene-aware presets (portrait / night / high-key / landscape /
-general), optional face smoothing, and no full-frame generative edits.
+general), burst preprocessing, and no full-frame generative edits. The agent may
+adjust levels and presets to the user's request within the documented limits.
 
 ## Built on open source
 
