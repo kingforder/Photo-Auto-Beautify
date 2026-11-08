@@ -14,6 +14,9 @@ lighter profile and was not part of that 47-image run.
 | `high` (default) | `rt-look3.pp3` | Punchy, social-ready |
 | `max` | `rt-look4.pp3` | Extra; intentionally allowed to overdo it |
 
+> Naming change: the previous `max` level (look3) is now `high`; `max` selects
+> look4, the extra over-the-top level.
+
 ## Measured reference
 
 | Metric | Camera match | look2 | look3 | look4 |
