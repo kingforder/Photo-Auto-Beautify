@@ -41,6 +41,8 @@ def parse_args():
     p = argparse.ArgumentParser(description="Detect and process photo bursts locally.")
     p.add_argument("--input", required=True, help="folder of photos")
     p.add_argument("--output-dir", help="default: <input>/bursts")
+    p.add_argument("--raster-dir",
+                   help="optional folder of rendered JPGs matching RAW stems, used for pixels")
     p.add_argument("--min-frames", type=int, default=3)
     p.add_argument("--gap", type=float, default=1.5, help="max seconds between frames")
     p.add_argument("--hash-distance", type=int, default=14)
@@ -204,10 +206,11 @@ def add_image_metrics(frame):
     frame["sharp"] = 0.0
     frame["clip"] = 0.0
     frame["score"] = 0.0
-    if not frame["path"].lower().endswith(tuple(RASTER_EXT)):
+    pixel_path = frame.get("pixel_path", frame["path"])
+    if not pixel_path.lower().endswith(tuple(RASTER_EXT)):
         return frame
     try:
-        rgb = load_rgb(frame["path"])
+        rgb = load_rgb(pixel_path)
         frame["hash"] = dhash(rgb)
         frame["sharp"] = sharpness(rgb)
         frame["clip"] = clipping_penalty(rgb)
@@ -217,7 +220,18 @@ def add_image_metrics(frame):
     return frame
 
 
-def scan(input_dir):
+def matching_raster(path, raster_dir):
+    if not raster_dir:
+        return None
+    stem = os.path.splitext(os.path.basename(path))[0]
+    for ext in (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"):
+        candidate = os.path.join(raster_dir, stem + ext)
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def scan(input_dir, raster_dir=None):
     frames = []
     for name in sorted(os.listdir(input_dir)):
         ext = os.path.splitext(name)[1].lower()
@@ -228,6 +242,7 @@ def scan(input_dir):
             continue
         meta = read_metadata(path)
         meta["ext"] = ext
+        meta["pixel_path"] = matching_raster(path, raster_dir) or path
         frames.append(add_image_metrics(meta))
     frames.sort(key=lambda f: (f["mtime"], f["name"]))
     return frames
@@ -323,7 +338,7 @@ def load_frames(group, best):
     best_index = None
     for frame in group:
         try:
-            rgb = load_rgb(frame["path"])
+            rgb = load_rgb(frame.get("pixel_path", frame["path"]))
         except Exception:
             continue
         if frame is best:
@@ -436,7 +451,7 @@ def main():
     if not os.path.isdir(input_dir):
         raise SystemExit(f"input not found: {input_dir}")
 
-    frames = scan(input_dir)
+    frames = scan(input_dir, os.path.abspath(args.raster_dir) if args.raster_dir else None)
     groups = group_frames(frames, args.gap, args.min_frames, args.hash_distance)
     results = []
     if not args.dry_run:

@@ -29,6 +29,8 @@ Useful options:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
+| `--input` | required | Folder of originals |
+| `--raster-dir` | off | Matching rendered JPGs for RAW pixels (same stem) |
 | `--min-frames` | 3 | Minimum frames in a burst |
 | `--gap` | 1.5 | Max seconds between adjacent frames |
 | `--hash-distance` | 14 | Max perceptual-hash Hamming distance |
@@ -66,7 +68,12 @@ and notes. The original files stay where they are.
   unrelated photos taken one second apart do not become a burst.
 
 RAW files can be grouped from metadata, but stacking/animation needs a
-decodable raster. Render RAW first, or use the main pipeline's JPG output.
+decodable raster. Render RAW first, or use `--raster-dir` with the beauty JPGs
+(same stem); metadata still comes from the original RAW.
+
+For RAW bursts, install open-source `exiftool`; without it the tool falls back
+to filename/mtime, and copied RAW files may have copy time instead of capture
+time.
 
 ## Stacking caveats
 

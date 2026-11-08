@@ -90,6 +90,15 @@ The default only groups bursts and picks the best frame; add `--stack` and/or
 `--animate` explicitly. Stacking works best for static scenes/night; animated
 output is capped in width/frames.
 
+For RAW files, metadata can come from the original RAW while pixels come from
+rendered JPGs with the same stem:
+
+```powershell
+python scripts\burst-detect.py `
+  --input "C:\photos" --raster-dir "C:\photos\beauty-out" `
+  --output-dir "C:\photos\bursts" --stack --animate
+```
+
 On Linux/WSL, run `bash scripts/setup-rt.sh` first and use `python3`; the pipeline
 auto-detects the extracted AppImage under `rt-5.13/squashfs-root`. On macOS the
 same Python flow is expected but not yet verified.
