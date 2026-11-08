@@ -59,6 +59,14 @@ def parse_args():
     p.add_argument("--max-animate-frames", type=int, default=24)
     p.add_argument("--max-width", type=int, default=1280)
     p.add_argument("--fps", type=float, default=10.0)
+    p.add_argument("--best-per-burst", type=int, default=1,
+                   help="number of best frames to save per burst (default 1)")
+    p.add_argument("--no-save-best", action="store_true",
+                   help="do not copy selected best frames")
+    p.add_argument("--apply-cleanup", action="store_true",
+                   help="move non-best burst RAW files to --trash-dir")
+    p.add_argument("--trash-dir",
+                   help="default: <input>/待删除; only used with --apply-cleanup")
     p.add_argument("--dry-run", action="store_true")
     return p.parse_args()
 
@@ -292,6 +300,51 @@ def best_frame(group):
     return max(group, key=lambda f: (f["score"], f["sharp"]))
 
 
+def best_frames(group, count):
+    return sorted(group, key=lambda f: (f["score"], f["sharp"]), reverse=True)[:max(1, count)]
+
+
+def unique_path(path):
+    if not os.path.exists(path):
+        return path
+    stem, ext = os.path.splitext(path)
+    i = 2
+    while os.path.exists(f"{stem}-{i}{ext}"):
+        i += 1
+    return f"{stem}-{i}{ext}"
+
+
+def save_best_files(group, selected, best_dir, burst_id, dry_run=False):
+    saved = []
+    if dry_run:
+        return [os.path.join(best_dir, f["name"]) for f in selected]
+    os.makedirs(best_dir, exist_ok=True)
+    for rank, frame in enumerate(selected, 1):
+        dest = os.path.join(best_dir, f"{burst_id}-best-{rank}-{frame['name']}")
+        dest = unique_path(dest)
+        shutil.copy2(frame["path"], dest)
+        saved.append(dest)
+    return saved
+
+
+def move_non_best(group, selected, trash_dir, dry_run=False):
+    keep = {f["name"] for f in selected}
+    moved = []
+    for frame in group:
+        if frame["name"] in keep:
+            continue
+        if frame["ext"] not in RAW_EXT:
+            continue
+        if dry_run:
+            moved.append(os.path.join(trash_dir, frame["name"]))
+            continue
+        os.makedirs(trash_dir, exist_ok=True)
+        dest = unique_path(os.path.join(trash_dir, frame["name"]))
+        shutil.move(frame["path"], dest)
+        moved.append(dest)
+    return moved
+
+
 def format_time(ts):
     try:
         return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
@@ -466,11 +519,13 @@ def main():
     frames = scan(input_dir, os.path.abspath(args.raster_dir) if args.raster_dir else None)
     groups = group_frames(frames, args.gap, args.min_frames, args.hash_distance)
     results = []
+    selected_by_id = {}
     if not args.dry_run:
         os.makedirs(out_dir, exist_ok=True)
 
     for idx, group in enumerate(groups, 1):
         best = best_frame(group)
+        selected = best_frames(group, args.best_per_burst)
         item = {
             "id": f"burst-{idx:03d}",
             "frames": [f["name"] for f in group],
@@ -478,9 +533,20 @@ def main():
             "end": format_time(group[-1]["mtime"]),
             "best": best["name"],
             "best_score": round(best["score"], 2),
+            "best_frames": [f["name"] for f in selected],
+            "best_files": [],
             "stack": None,
             "animation": None,
+            "moved": [],
         }
+        if not args.no_save_best:
+            try:
+                item["best_files"] = save_best_files(
+                    group, selected, os.path.join(out_dir, "best"),
+                    item["id"], args.dry_run,
+                )
+            except Exception as exc:
+                item["best_note"] = f"best save failed: {exc}"
         if not args.dry_run and args.stack:
             path = os.path.join(out_dir, f"{item['id']}-stack.jpg")
             out, note = write_stack(
@@ -499,6 +565,22 @@ def main():
             item["animation"] = os.path.basename(out) if out else None
             item["animation_note"] = note
         results.append(item)
+        selected_by_id[item["id"]] = selected
+
+    trash_dir = os.path.abspath(
+        args.trash_dir or os.path.join(input_dir, "待删除")
+    )
+    moved_all = []
+    if args.apply_cleanup:
+        for group, item in zip(groups, results):
+            if item.get("best_note"):
+                item["moved_note"] = "skipped cleanup: best save failed"
+                continue
+            moved = move_non_best(
+                group, selected_by_id[item["id"]], trash_dir, args.dry_run
+            )
+            item["moved"] = [os.path.basename(p) for p in moved]
+            moved_all.extend(moved)
 
     if not args.dry_run:
         with open(os.path.join(out_dir, "bursts.json"), "w", encoding="utf-8") as fh:
@@ -506,22 +588,37 @@ def main():
                 "input": input_dir,
                 "min_frames": args.min_frames,
                 "gap_seconds": args.gap,
+                "best_per_burst": args.best_per_burst,
+                "cleanup": {
+                    "applied": bool(args.apply_cleanup),
+                    "trash_dir": trash_dir if args.apply_cleanup else None,
+                    "moved": [os.path.basename(p) for p in moved_all],
+                },
                 "bursts": results,
             }, fh, ensure_ascii=False, indent=2)
         with open(os.path.join(out_dir, "bursts.md"), "w", encoding="utf-8") as fh:
             fh.write("# Burst detection report\n\n")
             fh.write(f"Input: {input_dir}\n\n")
             fh.write(f"Bursts: {len(results)} (min {args.min_frames} frames, gap {args.gap}s)\n\n")
-            fh.write("| Burst | Frames | Start | Best | Stack | Animation |\n")
-            fh.write("| --- | --- | --- | --- | --- | --- |\n")
+            fh.write(f"Best frames per burst: {args.best_per_burst}\n\n")
+            fh.write("| Burst | Frames | Best | Saved | Stack | Animation | Moved |\n")
+            fh.write("| --- | --- | --- | --- | --- | --- | --- |\n")
             for item in results:
                 fh.write(
-                    f"| {item['id']} | {len(item['frames'])} | {item['start']} | "
-                    f"{item['best']} | {item['stack'] or '-'} | {item['animation'] or '-'} |\n"
+                    f"| {item['id']} | {len(item['frames'])} | {item['best']} | "
+                    f"{len(item['best_files'])} | {item['stack'] or '-'} | "
+                    f"{item['animation'] or '-'} | {len(item['moved'])} |\n"
                 )
+            if args.apply_cleanup:
+                fh.write(f"\nCleanup: moved {len(moved_all)} RAW files to `{trash_dir}`.\n")
     for item in results:
-        print(f"{item['id']}: {len(item['frames'])} frames, best={item['best']}")
+        print(
+            f"{item['id']}: {len(item['frames'])} frames, best={item['best']}, "
+            f"saved={len(item['best_files'])}, moved={len(item['moved'])}"
+        )
     print(f"bursts={len(results)} output={out_dir if not args.dry_run else '(dry-run)'}")
+    if args.apply_cleanup:
+        print(f"cleanup={'planned' if args.dry_run else 'applied'} trash={trash_dir}")
 
 
 if __name__ == "__main__":

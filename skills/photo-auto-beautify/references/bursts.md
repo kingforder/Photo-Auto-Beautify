@@ -44,6 +44,10 @@ Useful options:
 | `--max-animate-frames` | 24 | Frame cap |
 | `--max-width` | 1280 | Animation width cap |
 | `--fps` | 10 | Fallback speed when times are missing |
+| `--best-per-burst` | 1 | Best RAW frames copied per burst |
+| `--no-save-best` | off | Do not copy best frames |
+| `--apply-cleanup` | off | Move non-best burst RAW files to the trash folder |
+| `--trash-dir` | `<input>/待删除` | Destination for cleanup |
 | `--dry-run` | off | Group and report without writing |
 
 ## Outputs
@@ -52,12 +56,23 @@ Useful options:
 bursts/
   bursts.json
   bursts.md
-  burst-001-stack.jpg     # only with --stack
-  burst-001.webp          # only with --animate (or .gif)
+  best/                         # copies of selected best frames
+    burst-001-best-1-P102....RW2
+  burst-001-stack.jpg           # only with --stack
+  burst-001.webp                # only with --animate (or .gif)
 ```
 
-The JSON records the frames, start/end time, best frame, stack/animation paths,
-and notes. The original files stay where they are.
+The JSON records the frames, start/end time, best frame(s), stack/animation paths,
+and cleanup results. The original files stay where they are unless
+`--apply-cleanup` is explicitly used.
+
+`--apply-cleanup` is intentionally opt-in:
+
+- selected best frames are copied to `bursts/best/` and stay in place;
+- the remaining **burst RAW** files are moved to `<input>/待删除`;
+- non-burst RAW files are not touched;
+- no file is deleted; review the trash folder and remove it yourself;
+- run once with `--dry-run --apply-cleanup` to see the plan first.
 
 ## Detection rules
 
