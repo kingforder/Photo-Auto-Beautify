@@ -1,0 +1,8 @@
+[Sharpening]
+Enabled=true
+Method=usm
+Radius=1.0
+Amount=250
+Threshold=15
+HalocontrolEnabled=true
+HalocontrolAmount=60

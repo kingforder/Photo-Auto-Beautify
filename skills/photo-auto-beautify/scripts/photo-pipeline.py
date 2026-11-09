@@ -70,6 +70,16 @@ LUT_AMOUNT = {
     "high": 1.0,
     "max": 1.15,
 }
+DENOISE_LOOKS = {
+    "light": "rt-denoise-light.pp3",
+    "medium": "rt-denoise-medium.pp3",
+    "strong": "rt-denoise-strong.pp3",
+}
+SHARPEN_LOOKS = {
+    "light": "rt-sharpen-light.pp3",
+    "medium": "rt-sharpen-medium.pp3",
+    "strong": "rt-sharpen-strong.pp3",
+}
 
 PHONE_MAKES = (
     "apple", "xiaomi", "redmi", "huawei", "honor", "oppo", "vivo",
@@ -181,14 +191,24 @@ def exif_text(exif, tag):
     return ""
 
 
+def exif_int(exif, tag):
+    try:
+        value = exif.get(tag)
+        if value:
+            return int(str(value).strip())
+    except Exception:
+        pass
+    return 0
+
+
 def exiftool_source_metadata(path):
-    """Read Make/Model/Software/LensModel from RAW or unusual containers."""
+    """Read Make/Model/Software/LensModel/ISO from RAW or unusual containers."""
     exe = os.environ.get("EXIFTOOL") or shutil.which("exiftool")
     if not exe:
         return {}
     try:
         p = subprocess.run(
-            [exe, "-j", "-Make", "-Model", "-Software", "-LensModel", path],
+            [exe, "-j", "-Make", "-Model", "-Software", "-LensModel", "-ISO", path],
             capture_output=True, timeout=10,
         )
         if p.returncode != 0 or not p.stdout.strip():
@@ -196,14 +216,14 @@ def exiftool_source_metadata(path):
         row = json.loads(p.stdout.decode("utf-8", errors="replace").lstrip("\ufeff"))[0]
         return {
             key: str(row.get(key) or "").strip()
-            for key in ("Make", "Model", "Software", "LensModel")
+            for key in ("Make", "Model", "Software", "LensModel", "ISO")
         }
     except Exception:
         return {}
 
 
 def read_source_metadata(path):
-    meta = {"make": "", "model": "", "software": "", "lens": ""}
+    meta = {"make": "", "model": "", "software": "", "lens": "", "iso": 0}
     try:
         image_formats.ensure_heif()
         with Image.open(path) as im:
@@ -212,6 +232,7 @@ def read_source_metadata(path):
             meta["model"] = exif_text(exif, 272)
             meta["software"] = exif_text(exif, 305)
             meta["lens"] = exif_text(exif, 42036)
+            meta["iso"] = exif_int(exif, 34855) or exif_int(exif, 34867)
     except Exception:
         pass
     if not (meta["make"] or meta["model"]):
@@ -220,6 +241,10 @@ def read_source_metadata(path):
         meta["model"] = meta["model"] or extra.get("Model", "")
         meta["software"] = meta["software"] or extra.get("Software", "")
         meta["lens"] = meta["lens"] or extra.get("LensModel", "")
+        try:
+            meta["iso"] = meta["iso"] or int(extra.get("ISO") or 0)
+        except ValueError:
+            pass
     return meta
 
 
@@ -256,12 +281,43 @@ def source_from_metadata(meta):
     return "unknown", evidence
 
 
-def detect_source(path, forced="auto"):
-    meta = read_source_metadata(path)
+def detect_source(path, forced="auto", meta=None):
+    meta = meta or read_source_metadata(path)
     source, evidence = source_from_metadata(meta)
     if forced and forced != "auto":
         return forced, f"forced {forced}; {evidence}"
     return source, evidence
+
+
+def auto_detail(source, iso):
+    """Conservative detail policy: phone noise, camera high-ISO noise, camera
+    output sharpening. Phone images are already sharpened by their camera app,
+    so they are not sharpened again by default."""
+    denoise = "off"
+    if source == "phone":
+        if iso >= 3200:
+            denoise = "medium"
+        elif iso >= 800:
+            denoise = "light"
+    elif source == "camera":
+        if iso >= 6400:
+            denoise = "medium"
+        elif iso >= 1600:
+            denoise = "light"
+    elif source == "unknown" and iso >= 3200:
+        denoise = "light"
+    sharpen = "light" if source == "camera" else "off"
+    return denoise, sharpen
+
+
+def resolve_detail(source, iso, denoise, sharpen):
+    if denoise == "auto" or sharpen == "auto":
+        auto_denoise, auto_sharpen = auto_detail(source, iso)
+        if denoise == "auto":
+            denoise = auto_denoise
+        if sharpen == "auto":
+            sharpen = auto_sharpen
+    return denoise, sharpen
 
 
 def effective_strength(source, strength, phone_strength):
@@ -331,7 +387,8 @@ def rt_profiles(rt):
     raise FileNotFoundError(f"RawTherapee profiles folder not found under {rt!r}")
 
 
-def render_rt(src, dst, is_raw, scene, strength, rt, tmp, m=None):
+def render_rt(src, dst, is_raw, scene, strength, rt, tmp, m=None,
+              denoise="off", sharpen="off"):
     cli = rt_tool(rt)
     profiles = []
     if is_raw:
@@ -348,6 +405,10 @@ def render_rt(src, dst, is_raw, scene, strength, rt, tmp, m=None):
         elif strength == "max":
             look_name = "rt-look2-portrait-neutral.pp3"
     profiles.append(os.path.join(SKILL, "assets", "looks", look_name))
+    if denoise != "off":
+        profiles.append(os.path.join(SKILL, "assets", "looks", DENOISE_LOOKS[denoise]))
+    if sharpen != "off":
+        profiles.append(os.path.join(SKILL, "assets", "looks", SHARPEN_LOOKS[sharpen]))
     out = os.path.join(tmp, os.path.splitext(os.path.basename(src))[0] + "-rt.jpg")
     cmd = [cli, "-o", out]
     for p in profiles:
@@ -421,6 +482,12 @@ def main():
     p.add_argument("--source", choices=["auto", "phone", "camera", "unknown"],
                    default="auto",
                    help="override EXIF source detection (default auto)")
+    p.add_argument("--denoise", choices=["auto", "off", "light", "medium", "strong"],
+                   default="auto",
+                   help="noise reduction: auto is phone/high-ISO only (default auto)")
+    p.add_argument("--sharpen", choices=["auto", "off", "light", "medium", "strong"],
+                   default="auto",
+                   help="output sharpening: auto is light for camera only (default auto)")
     p.add_argument("--rt-root", default=DEFAULT_RT)
     p.add_argument("--rawmakase", default=DEFAULT_RM)
     p.add_argument("--model", default=DEFAULT_MODEL)
@@ -455,8 +522,11 @@ def main():
         for name in files:
             src = os.path.join(args.input, name)
             is_raw = name.lower().endswith(image_formats.RAW_EXT)
-            source, source_evidence = detect_source(src, args.source)
+            meta = read_source_metadata(src)
+            source, source_evidence = detect_source(src, args.source, meta=meta)
+            iso = int(meta.get("iso") or 0)
             strength = effective_strength(source, args.strength, args.phone_strength)
+            denoise, sharpen = resolve_detail(source, iso, args.denoise, args.sharpen)
             try:
                 # WebP/AVIF/HEIC/HEIF/JXL are converted to a working TIFF once;
                 # all later steps (RT, face, metrics) use that copy.
@@ -475,11 +545,14 @@ def main():
                 m = measure(preview, face_mod, args.model)
                 rows.append({"file": name, "src": src, "working": working, "raw": is_raw,
                              "preview": preview, "m": m, "source": source,
-                             "source_evidence": source_evidence, "strength": strength})
+                             "source_evidence": source_evidence, "iso": iso,
+                             "strength": strength, "denoise": denoise,
+                             "sharpen": sharpen})
             except Exception as e:
                 rows.append({"file": name, "src": src, "working": src, "raw": is_raw, "m": None,
                              "source": source, "source_evidence": source_evidence,
-                             "strength": strength, "error": str(e), "note": str(e)})
+                             "iso": iso, "strength": strength, "denoise": denoise,
+                             "sharpen": sharpen, "error": str(e), "note": str(e)})
 
         valid = [r for r in rows if r.get("m")]
         median_sharp = float(np.median([r["m"]["sharp"] for r in valid])) if valid else 0
@@ -507,7 +580,8 @@ def main():
             if cls == "ok":
                 dst = beauty_name(r["src"], r["raw"], outdir, args.overwrite_originals)
                 tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(r["src"]))[0] + "-beauty.jpg")
-                render_rt(src, tmp_out, r["raw"], r["scene"], r["strength"], args.rt_root, tmp, m)
+                render_rt(src, tmp_out, r["raw"], r["scene"], r["strength"],
+                          args.rt_root, tmp, m, r["denoise"], r["sharpen"])
                 if r["scene"] == "portrait":
                     try:
                         global_skin_lut(tmp_out, dst, LUT_AMOUNT[r["strength"]])
@@ -553,11 +627,12 @@ def main():
         f.write(f"Strength policy: {strength_policy(args.strength, args.phone_strength)}\n\n")
         f.write(f"Source override: {args.source}\n\n")
         f.write("## Normal photos (beautified)\n\n")
-        f.write("| Original | Source | Scene | Strength | Output | Notes |\n| --- | --- | --- | --- | --- | --- |\n")
+        f.write("| Original | Source | Scene | Strength | Detail | Output | Notes |\n| --- | --- | --- | --- | --- | --- | --- |\n")
         for r in rows:
             if r["action"] in ("beauty",) or (args.dry_run and r["class"] == "ok"):
                 out = os.path.basename(r["output"]) if r["output"] else "(dry-run)"
-                f.write(f"| {r['file']} | {r['source']} | {r['scene']} | {r['strength']} | {out} | {r['note']} |\n")
+                detail = f"DN {r['denoise']} / SH {r['sharpen']}"
+                f.write(f"| {r['file']} | {r['source']} | {r['scene']} | {r['strength']} | {detail} | {out} | {r['note']} |\n")
         f.write("\n## Obvious problems (fixed candidates, waiting for confirmation)\n\n")
         f.write("| Original | Issue | Fixed file | Method |\n| --- | --- | --- | --- |\n")
         for r in rows:
@@ -583,6 +658,8 @@ def main():
         f.write("\n## Plan\n\n")
         f.write("- Source is inferred from EXIF Make/Model: phone uses the phone level, camera uses high, unknown uses medium (conservative).\n")
         f.write("- `--strength` forces one level for every photo; `--source` overrides EXIF detection when metadata is missing or wrong.\n")
+        f.write("- Detail is conservative: denoise auto is phone at ISO 800+, camera at ISO 1600+; sharpening auto is camera light; phone/unknown off. Stronger levels are explicit.\n")
+        f.write("- Denoising reduces noise but also softens detail; sharpening raises edge acutance and can create halos, but cannot recover missed focus or motion blur.\n")
         f.write("- Camera general scenes use look3 (`high`); phone/medium uses look2; portraits use the light portrait base.\n")
         f.write("- Portrait: light base + global skin-tone LUT; the LUT is scaled down for min/medium, so phone portraits stay gentler. No face mask, smoothing, or local whitening.\n")
         f.write("- A high face-saturation reading switches to a neutral portrait base.\n")
@@ -593,7 +670,8 @@ def main():
 
     print(f"processed={len(rows)} report={args.report}")
     for r in rows:
-        print(f"  {r['file']}: {r['source']} / {r['strength']} / {r['class']} / {r['scene']} "
+        print(f"  {r['file']}: {r['source']} / {r['strength']} / "
+              f"dn={r['denoise']} sh={r['sharpen']} / {r['class']} / {r['scene']} "
               f"-> {r['action']} {os.path.basename(r['output']) if r['output'] else ''}")
 
 

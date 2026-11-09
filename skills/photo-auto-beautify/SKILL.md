@@ -1,6 +1,6 @@
 ---
 name: photo-auto-beautify
-description: Agent Skill for local, free batch photo beautification. Import it into an AI agent; the agent adapts presets, levels, and burst cleanup to the user's taste and runs the local scripts. Triage, source-aware levels, scene-aware color, portraits, bursts, culling, mainstream formats; originals preserved.
+description: Agent Skill for local, free batch photo beautification. Import it into an AI agent; the agent adapts presets, levels, and burst cleanup to the user's taste and runs the local scripts. Triage, source-aware levels, scene-aware color, denoise/sharpness, portraits, bursts, culling, mainstream formats; originals preserved.
 license: 0BSD
 ---
 
@@ -41,6 +41,8 @@ The agent can adjust:
 | “自然一点 / 不要假白” | Prefer lower portrait base / neutral look; keep shadows |
 | “脸再白一点” | Adjust portrait whitening/LUT strength within safe limits |
 | “手机拍的别修太重 / 相机片保留质感” | Keep `--strength auto`; phone uses `--phone-strength medium` (or `min`), camera uses high; override `--source` only when EXIF is missing or wrong |
+| “噪点太多 / 高感太重” | Enable `--denoise light` (or `medium`); inspect flat areas before using `strong` |
+| “锐一点 / 提升锐度” | Use `--sharpen light` (or `medium`); explain that this raises edge acutance, not true detail |
 | “连拍只留最好的” | Keep 1 best frame per burst (default; max 2), verify, then cleanup |
 | “不要动原片” | Skip `--apply-cleanup`; keep best frames in place |
 | “要动图 / 不要堆叠” | Enable animation, skip stack; respect motion guards |
@@ -55,6 +57,7 @@ The agent can adjust:
 | Source awareness | Rule-based | EXIF Make/Model → phone / camera / unknown; phone medium or low, camera high, unknown medium |
 | Scene awareness | Rule-based | Portrait, night, high-key, landscape, general; picks a preset per scene |
 | Portrait | Conservative | Light base + global skin-tone LUT; no face mask, smoothing, or local whitening |
+| Detail | Optional | Conservative denoise and output sharpening; auto by source/ISO, explicit light/medium/strong |
 | Styles | Extensible | B&W, dehaze, night, food; more looks can be added |
 | Culling | Stable | Blur, exposure outliers, near-duplicates; reports only, never deletes |
 | Bursts | Optional | Preprocess first: group, best, stack/animation, optional cleanup; beauty retained outputs after |
@@ -133,6 +136,8 @@ python scripts\photo-pipeline.py `
 - `--strength auto` is the default: phone → medium, camera → high, unknown → medium;
 - `--phone-strength min|medium`: lower phone portraits (default `medium`);
 - `--source auto|phone|camera|unknown`: override EXIF source detection;
+- `--denoise auto|off|light|medium|strong`: noise reduction; auto is conservative;
+- `--sharpen auto|off|light|medium|strong`: output sharpening; auto is camera light;
 - `--dry-run`: plan only;
 - `--temp-dir`: writable temp folder for restricted environments;
 - `--overwrite-originals`: dangerous, JPG/JPEG only, explicit user request only;
@@ -224,10 +229,39 @@ details: `references/workflow.md`.
   separately through `rt-batch.ps1` or the look profiles and are not mixed in;
 - B&W/dehaze use `-ProfileOnly` to avoid a second tone-curve pass.
 
+## Noise and sharpness
+
+Two different operations:
+
+- **Denoise** suppresses luminance/chroma noise. It always trades away some
+  texture; the stronger the setting, the more detail is smoothed.
+- **Sharpening / 锐度** raises edge acutance — local contrast at edges. It looks
+  sharper but does not add real detail, cannot recover missed focus or motion
+  blur, and overdoing it creates halos and crunchy skin.
+
+Default `--denoise auto` / `--sharpen auto`:
+
+| Source | Denoise | Sharpen |
+| --- | --- | --- |
+| Phone | off below ISO 800; `light` 800–3199; `medium` 3200+ | off (phone JPEGs are already sharpened) |
+| Camera | off below ISO 1600; `light` 1600–6399; `medium` 6400+ | `light` |
+| Unknown | `light` only at ISO 3200+ | off |
+
+- `--denoise off|light|medium|strong` and `--sharpen off|light|medium|strong`
+  override auto; `strong` is deliberately explicit and should be checked at 100%.
+- Denoise runs before sharpening, so a noisy high-ISO image is not just
+  sharpened noise.
+- For portraits, stay at `light` unless the user asks otherwise; `medium` or
+  `strong` can emphasize pores and skin texture.
+- Use `--denoise off --sharpen off` for a strictly natural documentary result.
+- These controls cannot invent detail: a blurry or out-of-focus frame stays
+  blurry. Do not promise “resolution enhancement”.
+
 ## Boundaries
 
 - No face reshaping, face swap, sky replacement, or generative rewriting;
 - Clipped highlights, crushed blacks, and severe blur cannot be invented;
+- Sharpening cannot recover missed focus or motion blur; denoise trades texture for noise removal;
 - Burst stacking can ghost moving people; use best-frame or animation for those;
 - Scene detection is rule-based, not semantic understanding;
 - Detailed limits live in `references/`.
@@ -235,6 +269,7 @@ details: `references/workflow.md`.
 ## References
 
 - `references/limits.md`: tested strength limits and decision matrix
+- `references/detail.md`: denoise, sharpness/acutance, and their limits
 - `references/portrait.md`: portrait capabilities and limits
 - `references/bursts.md`: burst grouping, stacking, animation, and limits
 - `references/workflow.md`: burst-first preprocessing then beauty order

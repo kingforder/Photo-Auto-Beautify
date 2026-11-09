@@ -16,6 +16,7 @@
 
 - 自动分诊：正常 / 明显问题 / 疑似问题，整图模糊单独提示；
 - 来源感知：读取 EXIF `Make`/`Model`，手机默认均衡档（可降到低档），相机默认高档，来源不明时用均衡档兜底；
+- 降噪与锐化：按来源/ISO 自动选择轻度或中度降噪，相机默认轻度输出锐化；这里的“锐度”是边缘 acutance，不是凭空增加细节；
 - 场景感知：人像、夜景、高调、风景、通用；
 - 四档强度：`min` 自然 / `medium` 均衡 / `high` 出片 / `max` 更重（允许调过头）；`--strength` 可强制所有照片使用同一档；
 - 人像：使用更轻的基础 look + 全局肤色 LUT，不做人脸抠图、蒙版磨皮或局部美白；LUT 按颜色相似度平滑提亮肤色，脸/脖子/手一起自然过渡；手机均衡档的 LUT 比相机高档更轻；检测人脸饱和度，已经饱和时改用中性基础配置；读取时识别 ICC（DCI-P3→sRGB）；
@@ -103,6 +104,8 @@ python "$Skill\scripts\photo-pipeline.py" `
 - `--strength auto`：默认；读取 EXIF `Make`/`Model`，手机 → `medium`，相机 → `high`，来源不明 → `medium`。
 - `--phone-strength min|medium`：把手机档降得更低（默认 `medium`）。
 - `--source auto|phone|camera|unknown`：EXIF 缺失或识别错误时强制来源。
+- `--denoise auto|off|light|medium|strong`：降噪；`auto` 只对手机/高 ISO 保守处理。
+- `--sharpen auto|off|light|medium|strong`：输出锐化；`auto` 只给相机轻度锐化。
 - `--strength min|medium|high|max`：强制所有照片使用同一档；`max` 会明显更重，给“就要好看”的用户。
 - `--dry-run`：只输出分诊计划；
 - `--temp-dir`：受限环境指定可写临时目录；

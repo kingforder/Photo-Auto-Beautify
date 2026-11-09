@@ -1,0 +1,20 @@
+[Directional Pyramid Denoising]
+Enabled=true
+Enhance=false
+Median=true
+Luma=50
+Ldetail=60
+Method=Lab
+LMethod=SLI
+CMethod=AUT
+C2Method=AUTO
+SMethod=shal
+MedMethod=55
+RGBMethod=soft
+MethodMed=Lpab
+Redchro=10
+Bluechro=10
+Gamma=1.7
+Passes=1
+LCurve=0;
+CCurve=0;

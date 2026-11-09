@@ -1,6 +1,6 @@
 {
   "name": "photo-auto-beautify",
-  "description": "Agent Skill for local, free, batch photo beautification. Import into an AI agent; it adapts presets, source-aware levels, burst choices, and cleanup to the user's request and runs the local scripts. Triage, scenes, portraits, culling, mainstream formats; no cloud, no subscription.",
+  "description": "Agent Skill for local, free, batch photo beautification. Import into an AI agent; it adapts presets, source-aware levels, denoise/sharpness, burst choices, and cleanup to the user's request and runs the local scripts. Triage, scenes, portraits, culling, mainstream formats; no cloud, no subscription.",
   "version": "1.0.0",
   "author": {
     "name": "photo-auto-beautify contributors"

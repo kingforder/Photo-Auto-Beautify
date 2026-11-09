@@ -16,6 +16,11 @@ The LUT amount follows the effective level: `min` 0.35, `medium` 0.65,
 and unknown sources use `medium` conservatively. `--phone-strength min` makes
 phone portraits lighter still; `--strength` forces one level for every photo.
 
+Output sharpening is independent of the LUT. Camera portraits get `light` by
+default; phone portraits get none because phone JPEGs are already sharpened.
+Avoid `medium`/`strong` sharpening on skin unless the user explicitly wants a
+crunchier look — it emphasizes pores and can create halos.
+
 ## Legacy face-beautify module (optional, not used by default)
 
 The old mask-based module below remains available for experiments (`face-beautify.py`),

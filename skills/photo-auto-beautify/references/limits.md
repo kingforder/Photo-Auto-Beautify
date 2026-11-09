@@ -5,6 +5,9 @@ Auto-Matched Curve plus four look levels. Measurements below use the original
 camera-match / look2 / look3 / look4 profiles; `look1` (the new `min` level) is a
 lighter profile and was not part of that 47-image run.
 
+> Denoise and sharpening are covered separately in `detail.md`. Sharpening raises
+> edge acutance, not real resolution; it cannot repair focus or motion blur.
+
 ## Levels
 
 | Level | Profile | Intent |
