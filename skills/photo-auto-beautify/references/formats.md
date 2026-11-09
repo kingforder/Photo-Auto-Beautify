@@ -1,7 +1,7 @@
 # Input format matrix
 
-Output is always JPEG by default. Normal RAW files produce `<name>.jpg`; other
-normal formats produce `<name>-beauty.jpg`.
+Output is always JPEG by default. Every readable RAW produces `<name>.jpg`;
+other readable formats produce `<name>-beauty.jpg`.
 
 | Input | Decoder | Status |
 | --- | --- | --- |

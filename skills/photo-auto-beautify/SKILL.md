@@ -13,10 +13,11 @@ license: 0BSD
 > The CLI examples below are implementation details for the agent (and for
 > auditing/debugging), not instructions the end user should have to memorize.
 
-Turn a folder of originals into deliverable results: triage first, then either
-beautify, produce a fixed candidate, or suggest only. Levels are source-aware by
-default: phone images use balanced/low beauty, camera images use the high look;
-originals are never modified; only originals and results remain.
+Turn a folder of originals into deliverable results: triage first, then run the
+basic beauty pass on **every readable image**; obvious problems add a fixed
+candidate, suspect/blur adds a warning. Levels are source-aware by default:
+phone images use natural/low beauty, camera images use the high look; originals
+are never modified; only originals and results remain.
 
 ## How the agent should use this Skill
 
@@ -87,9 +88,13 @@ scripts and references.
 | Class | Action |
 | --- | --- |
 | Normal | Source-aware: phone min, camera high, unknown medium; `--strength` forces one level |
-| Obvious problem | Keep the original, write a `<name>-fixed.jpg` candidate, then ask |
-| Suspect | Suggestions only; no file |
-| Obvious but unrepairable | Whole-frame blur etc.; recommend a reshoot or focus check |
+| Obvious problem | **Basic beauty still runs**; write an additional `<name>-fixed.jpg` candidate, then ask |
+| Suspect | **Basic beauty still runs**; add a warning, no fixed candidate |
+| Obvious but unrepairable | **Basic beauty still runs**; warn about blur/focus rather than skipping |
+
+Every readable image gets a basic beauty output. Triage only decides whether an
+extra fixed candidate or a warning is added; it must not suppress the base pass.
+Unreadable/convert-failed files are the only exception.
 
 ### Source-aware levels
 
@@ -114,7 +119,7 @@ Source is inferred from EXIF `Make`/`Model`; no filename guessing. The default
 
 Output naming:
 
-- Normal RAW → `<name>.jpg` (same name as the RAW)
+- All readable RAW → `<name>.jpg` (same name as the RAW)
 - Other normal formats → `<name>-beauty.jpg`
 - Obvious problem → `<name>-fixed.jpg`
 - Final state: originals + beauty files + fixed candidates only; previews/temp removed
@@ -220,6 +225,8 @@ details: `references/workflow.md`.
 ## Scenes and styles
 
 - Scenes: `portrait`, `night`, `highkey`, `landscape`, `general`;
+- Dusk/sunset frames that are soft and low-saturation are treated as normal
+  scenes, not auto-rejected as blur; they still get the basic beauty pass;
 - Strength: `auto` by source by default (phone `min`, camera `high`, unknown
   `medium`); `--strength` forces `min`/`medium`/`high`/`max` for all;
 - Portraits use a light base look followed by a **global skin-tone LUT**;
@@ -288,8 +295,11 @@ LUT. All are global; none is a style conversion.
 ## Boundaries
 
 - No face reshaping, face swap, sky replacement, or generative rewriting;
+- No automatic style conversion (film, duotone, sky replacement); style needs a
+  separate explicit user decision;
 - Clipped highlights, crushed blacks, and severe blur cannot be invented;
 - Sharpening cannot recover missed focus or motion blur; denoise trades texture for noise removal;
+- Blur/suspect warnings do not suppress the basic beauty pass;
 - Burst stacking can ghost moving people; use best-frame or animation for those;
 - Scene detection is rule-based, not semantic understanding;
 - Detailed limits live in `references/`.

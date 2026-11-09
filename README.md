@@ -13,12 +13,13 @@
 The Skill has a shell-only backend. It triages a folder into
 **normal / obvious problem / suspect**, then:
 
-- beautifies normal photos source-aware: phone images at the balanced level (or lower), camera images at the high level;
+- beautifies every readable image source-aware: phone images at the natural level, camera images at the high level;
 - uses a light portrait base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/min and full on camera/high; no face mask, smoothing, or local whitening;
 - adds conservative denoise and output sharpening, auto-tuned by source/ISO; **sharpness means edge acutance, not invented detail**;
 - finishes with capped neutral white balance, neutral-guarded vibrance, and a gentle highlight shoulder; no automatic style conversion;
-- keeps the original and writes a `*-fixed.jpg` candidate for obvious problems;
-- only reports suggestions for suspect or unrepairable images;
+- adds a `*-fixed.jpg` candidate for obvious problems while still keeping the basic beauty output;
+- still beautifies suspect or soft frames and records a warning instead of skipping them;
+- treats low-saturation dusk/sunset softness as a normal scene, not automatic blur;
 - detects bursts, keeps one best frame by default (max two, only for a clearly different keeper), and optionally stacks or animates them (separate, non-destructive pass); best frames stay in the original folder and remaining burst RAW can optionally be moved to a review folder;
 - removes previews and temporary files, leaving originals + results.
 
@@ -103,9 +104,9 @@ python "$Skill\scripts\photo-pipeline.py" `
 - `--strength min|medium|high|max` — force one level for every photo; `max` is
   intentionally over-the-top for users who want maximum punch.
 - `--dry-run` — plan only, no output.
-- Normal RAW → `<name>.jpg`; other normal formats → `<name>-beauty.jpg`.
-- Obvious → `<name>-fixed.jpg`; ask the user before keeping it.
-- Suspect/blur → no file, only suggestions.
+- All readable RAW → `<name>.jpg`; other formats → `<name>-beauty.jpg`.
+- Obvious → basic beauty **plus** `<name>-fixed.jpg`; ask before keeping the candidate.
+- Suspect/blur → basic beauty **plus** a warning; not skipped.
 
 Linux / WSL:
 

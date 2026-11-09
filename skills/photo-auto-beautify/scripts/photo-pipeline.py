@@ -3,8 +3,9 @@
 
 Policy:
   * no problem  -> source-aware beauty (phone min, camera high, unknown medium)
-  * obvious     -> keep original, write a *-fixed.jpg candidate, ask the user
-  * suspect     -> no file, only a suggestion
+  * obvious     -> basic beauty + a *-fixed.jpg candidate, ask the user
+  * suspect     -> basic beauty + a warning, no fixed candidate
+  * blur        -> basic beauty + a focus warning, no fixed candidate
   * final state -> originals + beauty files + fixed candidates, no previews/temp
 """
 
@@ -167,6 +168,15 @@ def classify(m, median_sharp):
     if m["mean"] <= 25 and m["dark"] >= 40:
         return "obvious_under"
     if m["sharp"] < median_sharp * 0.2:
+        # Dusk/sunset frames are often soft and low-saturation by nature.
+        # Treat that atmospheric softness as a normal scene, not a rejected blur.
+        atmospheric = (
+            55 <= m["mean"] <= 170 and m["range"] >= 75 and m["sat"] <= 36
+        ) or (
+            50 <= m["mean"] <= 90 and m["range"] >= 65 and 30 <= m["sat"] <= 45
+        )
+        if atmospheric:
+            return "ok"
         return "obvious_blur"
     # Bright sky is normal in portraits/landscapes; only flag isolated clipping
     # on non-portrait images, or a genuinely dark frame.
@@ -682,9 +692,18 @@ def main():
         for r in rows:
             r["action"] = "none"
             r["output"] = ""
+            r["fixed_output"] = ""
+            r["fixed_note"] = ""
             if "note" not in r:
                 r["note"] = ""
             if args.dry_run:
+                if r["class"] == "error":
+                    r["action"] = "suggest"
+                    continue
+                r["action"] = "beauty"
+                r["output"] = "(dry-run)"
+                if r["class"] in ("obvious_over", "obvious_under"):
+                    r["fixed_output"] = "(dry-run)"
                 continue
             src = r.get("working") or r["src"]
             m, cls = r["m"], r["class"]
@@ -692,69 +711,81 @@ def main():
                 r["note"] = r.get("error", "read/convert failed")
                 r["action"] = "suggest"
                 continue
-            if cls == "ok":
-                dst = beauty_name(r["src"], r["raw"], outdir, args.overwrite_originals)
-                tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(r["src"]))[0] + "-beauty.jpg")
-                try:
-                    render_rt(src, tmp_out, r["raw"], r["scene"], r["strength"],
-                              args.rt_root, tmp, m, r["denoise"], r["sharpen"])
-                except Exception as e:
-                    r["class"] = "error"
-                    r["note"] = f"render failed: {e}"
-                    r["action"] = "suggest"
-                    continue
-                needs_finish = (
-                    r["scene"] == "portrait"
-                    or r["wb"] != "off"
-                    or r["vibrance"] != "off"
-                    or r["rolloff"] != "off"
-                )
+
+            # Basic beauty is mandatory for every readable image. Triage only
+            # decides whether an extra candidate or warning is added.
+            dst = beauty_name(r["src"], r["raw"], outdir, args.overwrite_originals)
+            tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(r["src"]))[0] + "-beauty.jpg")
+            try:
+                render_rt(src, tmp_out, r["raw"], r["scene"], r["strength"],
+                          args.rt_root, tmp, m, r["denoise"], r["sharpen"])
+            except Exception as e:
+                r["class"] = "error"
+                r["note"] = f"render failed: {e}"
+                r["action"] = "suggest"
+                continue
+
+            needs_finish = (
+                r["scene"] == "portrait"
+                or r["wb"] != "off"
+                or r["vibrance"] != "off"
+                or r["rolloff"] != "off"
+            )
+            notes = []
+            try:
                 if needs_finish:
-                    try:
-                        finalize_image(tmp_out, dst, r["scene"], r["strength"],
-                                       r["wb"], r["vibrance"], r["rolloff"])
-                        notes = []
-                        if r["scene"] == "portrait":
-                            notes.append("global skin LUT")
-                        if r["wb"] != "off":
-                            notes.append(f"WB {r['wb']}")
-                        if r["vibrance"] != "off":
-                            notes.append(f"vibrance {r['vibrance']}")
-                        if r["rolloff"] != "off":
-                            notes.append(f"highlight rolloff {r['rolloff']}")
-                        r["note"] = "; ".join(notes)
-                    except Exception:
-                        shutil.copy2(tmp_out, dst)
-                        r["note"] = "skin LUT/finish failed; base only"
+                    finalize_image(tmp_out, dst, r["scene"], r["strength"],
+                                   r["wb"], r["vibrance"], r["rolloff"])
+                    if r["scene"] == "portrait":
+                        notes.append("global skin LUT")
+                    if r["wb"] != "off":
+                        notes.append(f"WB {r['wb']}")
+                    if r["vibrance"] != "off":
+                        notes.append(f"vibrance {r['vibrance']}")
+                    if r["rolloff"] != "off":
+                        notes.append(f"highlight rolloff {r['rolloff']}")
                 else:
                     shutil.copy2(tmp_out, dst)
-                if os.path.abspath(dst) == os.path.abspath(r["src"]):
-                    r["note"] = (r["note"] + "; original overwritten (irreversible)").lstrip("; ")
-                r["action"] = "beauty"
-                r["output"] = dst
-            elif cls in ("obvious_over", "obvious_under"):
-                dst = fixed_name(r["src"], outdir)
-                if cls == "obvious_over":
-                    r["note"] = fix_over(src, dst, r["raw"], args.rt_root, args.rawmakase, tmp)
-                else:
-                    r["note"] = fix_under(src, dst, args.rt_root, tmp)
-                r["action"] = "fixed"
-                r["output"] = dst
-            elif cls == "obvious_blur":
-                r["note"] = "Whole-frame blur; cannot repair reliably. Reshoot or check focus."
-                r["action"] = "suggest"
-            else:
+            except Exception:
+                shutil.copy2(tmp_out, dst)
+                notes = ["skin LUT/finish failed; base only"]
+            if os.path.abspath(dst) == os.path.abspath(r["src"]):
+                notes.append("original overwritten (irreversible)")
+            r["action"] = "beauty"
+            r["output"] = dst
+            r["note"] = "; ".join(notes)
+
+            if cls == "obvious_blur":
+                r["note"] = "; ".join(x for x in (
+                    r["note"],
+                    "whole-frame blur; basic beauty produced, focus/motion cannot be repaired",
+                ) if x)
+            elif cls == "suspect":
                 reasons = []
                 if m["hot"] >= 3:
-                    reasons.append("Highlights clipped")
+                    reasons.append("highlights clipped")
                 if m["mean"] <= 55 and m["dark"] >= 8:
-                    reasons.append("Dark/night/silhouette")
+                    reasons.append("dark/night/silhouette")
                 if m["range"] <= 55:
-                    reasons.append("Low contrast")
+                    reasons.append("low contrast")
                 if m["sharp"] < median_sharp * 0.45:
-                    reasons.append("Low sharpness")
-                r["note"] = ", ".join(reasons) or "Statistical outlier"
-                r["action"] = "suggest"
+                    reasons.append("low sharpness")
+                extra = "basic beauty produced"
+                if reasons:
+                    extra += ": " + ", ".join(reasons)
+                r["note"] = "; ".join(x for x in (r["note"], extra) if x)
+
+            if cls in ("obvious_over", "obvious_under"):
+                fixed = fixed_name(r["src"], outdir)
+                try:
+                    if cls == "obvious_over":
+                        method = fix_over(src, fixed, r["raw"], args.rt_root, args.rawmakase, tmp)
+                    else:
+                        method = fix_under(src, fixed, args.rt_root, tmp)
+                    r["fixed_output"] = fixed
+                    r["fixed_note"] = method
+                except Exception as e:
+                    r["fixed_note"] = f"fixed candidate failed: {e}"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -763,37 +794,34 @@ def main():
         f.write(f"Input: {args.input}\n\n")
         f.write(f"Strength policy: {strength_policy(args.strength, args.phone_strength)}\n\n")
         f.write(f"Source override: {args.source}\n\n")
-        f.write("## Normal photos (beautified)\n\n")
-        f.write("| Original | Source | Scene | Strength | Detail | Finish | Output | Notes |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n")
+        f.write("## All beautified outputs (basic pass, including anomalies)\n\n")
+        f.write("| Original | Triage | Source | Scene | Strength | Detail | Finish | Output | Notes |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
         for r in rows:
-            if r["action"] in ("beauty",) or (args.dry_run and r["class"] == "ok"):
+            if r["action"] == "beauty":
                 out = os.path.basename(r["output"]) if r["output"] else "(dry-run)"
                 detail = f"DN {r['denoise']} / SH {r['sharpen']}"
                 finish = f"WB {r['wb']} / VIB {r['vibrance']} / ROLL {r['rolloff']}"
-                f.write(f"| {r['file']} | {r['source']} | {r['scene']} | {r['strength']} | {detail} | {finish} | {out} | {r['note']} |\n")
-        f.write("\n## Obvious problems (fixed candidates, waiting for confirmation)\n\n")
+                f.write(f"| {r['file']} | {r['class']} | {r['source']} | {r['scene']} | {r['strength']} | {detail} | {finish} | {out} | {r['note']} |\n")
+        f.write("\n## Fixed candidates (also have a basic beauty output)\n\n")
         f.write("| Original | Issue | Fixed file | Method |\n| --- | --- | --- | --- |\n")
         for r in rows:
-            if r["class"] in ("obvious_over", "obvious_under"):
-                f.write(f"| {r['file']} | {r['class']} | {os.path.basename(r['output']) if r['output'] else '(dry-run)'} | {r['note']} |\n")
-        if any(r["class"] in ("obvious_over", "obvious_under") for r in rows):
+            if r.get("fixed_output"):
+                f.write(f"| {r['file']} | {r['class']} | {os.path.basename(r['fixed_output'])} | {r['fixed_note']} |\n")
+        if any(r.get("fixed_output") for r in rows):
             f.write("\nConfirm whether to keep these `*-fixed.jpg` files; do not delete the originals before confirming.\n")
-        f.write("\n## Obvious problems that cannot be auto-fixed\n\n")
-        f.write("| Original | Scene | Suggestion |\n| --- | --- | --- |\n")
+        f.write("\n## Triage warnings (basic beauty still produced)\n\n")
+        f.write("| Original | Triage | Scene | Output | Note |\n| --- | --- | --- | --- | --- |\n")
         for r in rows:
-            if r["class"] == "obvious_blur":
-                f.write(f"| {r['file']} | {r['scene']} | {r['note']} |\n")
-        f.write("\n## Suspect images (suggestions only, no files)\n\n")
-        f.write("| Original | Scene | Concern / suggestion |\n| --- | --- | --- |\n")
-        for r in rows:
-            if r["action"] == "suggest" and r["class"] not in ("obvious_blur", "error"):
-                f.write(f"| {r['file']} | {r['scene']} | {r['note']} |\n")
+            if r["class"] in ("obvious_blur", "suspect"):
+                out = os.path.basename(r["output"]) if r["output"] else "(dry-run)"
+                f.write(f"| {r['file']} | {r['class']} | {r['scene']} | {out} | {r['note']} |\n")
         f.write("\n## Read/convert failures\n\n")
         f.write("| Original | Reason |\n| --- | --- |\n")
         for r in rows:
             if r["class"] == "error":
                 f.write(f"| {r['file']} | {r.get('error') or r['note']} |\n")
         f.write("\n## Plan\n\n")
+        f.write("- Every readable image gets a basic beauty output; triage only adds fixed candidates or warnings.\n")
         f.write("- Source is inferred from EXIF Make/Model: phone uses the phone level, camera uses high, unknown uses medium (conservative).\n")
         f.write("- `--strength` forces one level for every photo; `--source` overrides EXIF detection when metadata is missing or wrong.\n")
         f.write("- Detail is conservative: denoise auto is phone at ISO 800+, camera at ISO 1600+; sharpening auto is camera light; phone/unknown off. Stronger levels are explicit.\n")
@@ -806,14 +834,15 @@ def main():
         f.write("- Night uses ISO High + the selected look; high-key/food use the selected look.\n")
         f.write("- Non-RAW/JPEG/PNG/TIFF inputs are normalized to a working TIFF; obvious overexposed RAW uses RAWmakase XMP -2.5EV.\n")
         f.write("- No overwrite by default; `--overwrite-originals` applies only to normal JPG/JPEG; other formats keep their originals.\n")
-        f.write("- Suspect images produce no files; previews and temporary files are cleaned up.\n")
+        f.write("- Every readable image gets a basic beauty output; suspect/blur warnings do not suppress it. Fixed candidates are additional.\n")
 
     print(f"processed={len(rows)} report={args.report}")
     for r in rows:
+        fixed = f" + fixed {os.path.basename(r['fixed_output'])}" if r.get("fixed_output") else ""
         print(f"  {r['file']}: {r['source']} / {r['strength']} / "
               f"dn={r['denoise']} sh={r['sharpen']} "
               f"fin={r['wb']}/{r['vibrance']}/{r['rolloff']} / {r['class']} / {r['scene']} "
-              f"-> {r['action']} {os.path.basename(r['output']) if r['output'] else ''}")
+              f"-> {r['action']} {os.path.basename(r['output']) if r['output'] else ''}{fixed}")
 
 
 if __name__ == "__main__":

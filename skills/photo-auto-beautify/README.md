@@ -7,19 +7,20 @@
 > No subscription, no uploads, no one-by-one editing: the backend turns a whole
 > batch of RAW/JPG/HEIC files into deliverable results.
 
-A shell-only backend for an Agent Skill. Normal photos are beautified
-automatically; obvious problems produce a fixed candidate for confirmation;
-suspect images get suggestions only.
+A shell-only backend for an Agent Skill. Every readable photo gets a basic
+beauty output; obvious problems add a fixed candidate for confirmation, and
+suspect/soft images add a warning instead of being skipped.
 
+- Basic beauty is mandatory; triage only adds candidates/warnings.
 - Source-aware default: phone → `min` (or `--phone-strength medium` for more), camera → `high`, unknown → `medium`; `--strength` forces one level.
 - Conservative detail pass: denoise and output sharpening are auto-tuned by source/ISO; sharpening raises edge acutance, not real detail.
 - Low-risk finishing: capped neutral WB, neutral-guarded vibrance, and a gentle highlight shoulder; no automatic style conversion.
 - Portraits use a light base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/min and full on camera/high.
 - No face mask, smoothing, or local whitening: no cutout edges or pixel artifacts.
 - A saturation guard picks a neutral portrait base when the face is already saturated.
-- Normal RAW → a JPG with the same name; other formats → `<name>-beauty.jpg`.
-- Obvious over/under-exposure → keep the original, write `<name>-fixed.jpg`, ask first.
-- Suspect or blurred images → suggestions only, no file.
+- All readable RAW → a JPG with the same name; other formats → `<name>-beauty.jpg`.
+- Obvious over/under-exposure → basic beauty **plus** `<name>-fixed.jpg`, ask first.
+- Suspect or blurred images → basic beauty **plus** a warning; never skipped.
 - Optional burst pass: group by time/camera/hash, keep one best frame by default (max two, only for a clearly different keeper), optionally stack or animate (WebP/GIF); best frames stay in the original folder, and `--apply-cleanup` can move remaining burst RAW to a review folder. Separate and non-destructive by default.
 - Final state: originals + beauty files + fixed candidates; previews/temp removed.
 - **Originals are never overwritten by default.** `--overwrite-originals` is an
