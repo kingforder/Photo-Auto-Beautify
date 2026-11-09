@@ -15,7 +15,7 @@
 ## 能力
 
 - 自动分诊：正常 / 明显问题 / 疑似问题，整图模糊单独提示；
-- 来源感知：读取 EXIF `Make`/`Model`，手机默认均衡档（可降到低档），相机默认高档，来源不明时用均衡档兜底；
+- 来源感知：读取 EXIF `Make`/`Model`，手机默认低档，相机默认高档，来源不明时用均衡档兜底；
 - 降噪与锐化：按来源/ISO 自动选择轻度或中度降噪，相机默认轻度输出锐化；这里的“锐度”是边缘 acutance，不是凭空增加细节；
 - 低风险收尾：受限的中性色白平衡、带肤色/中性色保护的 Vibrance、轻高光 shoulder；不自动做风格转换；
 - 场景感知：人像、夜景、高调、风景、通用；
@@ -59,7 +59,7 @@ HEIC 需要 `pillow-heif`；JXL 需要 `ffmpeg`（libjxl）。
 
 | 分类 | 处理 |
 | --- | --- |
-| 正常 | 按来源自动选档：手机 `medium`（可 `min`），相机 `high`，来源不明 `medium`；`--strength` 强制统一档位 |
+| 正常 | 按来源自动选档：手机 `min`（可升 `medium`），相机 `high`，来源不明 `medium`；`--strength` 强制统一档位 |
 | 明显问题 | 保留原图，生成 `<原名>-fixed.jpg` 候选，再询问 |
 | 疑似问题 | 只给建议，不生成文件 |
 | 明显但无法修复 | 整图模糊等只提示重拍/检查对焦 |
@@ -68,7 +68,7 @@ HEIC 需要 `pillow-heif`；JXL 需要 `ffmpeg`（libjxl）。
 
 | 来源 | 默认档位 | 人像处理 |
 | --- | --- | --- |
-| 手机 | `medium`（要更自然用 `--phone-strength min`） | 轻基础 look + 0.65 LUT（`min` 为 0.35） |
+| 手机 | `min`（默认；要更重才用 `--phone-strength medium`） | 轻基础 look + 0.35 LUT（`medium` 为 0.65） |
 | 相机 | `high` | 轻基础 look + 1.0 LUT |
 | 不明 | `medium` | 保守兜底，避免把去 EXIF 的手机片修重 |
 
@@ -102,8 +102,8 @@ python "$Skill\scripts\photo-pipeline.py" `
   --report "C:\photos\pipeline-report.md"
 ```
 
-- `--strength auto`：默认；读取 EXIF `Make`/`Model`，手机 → `medium`，相机 → `high`，来源不明 → `medium`。
-- `--phone-strength min|medium`：把手机档降得更低（默认 `medium`）。
+- `--strength auto`：默认；读取 EXIF `Make`/`Model`，手机 → `min`，相机 → `high`，来源不明 → `medium`。
+- `--phone-strength min|medium`：手机档位（默认 `min`，想更重才用 `medium`）。
 - `--source auto|phone|camera|unknown`：EXIF 缺失或识别错误时强制来源。
 - `--denoise auto|off|light|medium|strong`：降噪；`auto` 只对手机/高 ISO 保守处理。
 - `--sharpen auto|off|light|medium|strong`：输出锐化；`auto` 只给相机轻度锐化。

@@ -11,10 +11,10 @@ A shell-only backend for an Agent Skill. Normal photos are beautified
 automatically; obvious problems produce a fixed candidate for confirmation;
 suspect images get suggestions only.
 
-- Source-aware default: phone → `medium` (or `--phone-strength min`), camera → `high`, unknown → `medium`; `--strength` forces one level.
+- Source-aware default: phone → `min` (or `--phone-strength medium` for more), camera → `high`, unknown → `medium`; `--strength` forces one level.
 - Conservative detail pass: denoise and output sharpening are auto-tuned by source/ISO; sharpening raises edge acutance, not real detail.
 - Low-risk finishing: capped neutral WB, neutral-guarded vibrance, and a gentle highlight shoulder; no automatic style conversion.
-- Portraits use a light base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/medium and full on camera/high.
+- Portraits use a light base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/min and full on camera/high.
 - No face mask, smoothing, or local whitening: no cutout edges or pixel artifacts.
 - A saturation guard picks a neutral portrait base when the face is already saturated.
 - Normal RAW → a JPG with the same name; other formats → `<name>-beauty.jpg`.
@@ -66,8 +66,8 @@ python scripts\photo-pipeline.py --input "C:\photos" --output-dir "C:\photos" `
   --report "C:\photos\pipeline-report.md"
 ```
 
-- `--strength auto` (default): phone → `medium`, camera → `high`, unknown → `medium`.
-- `--phone-strength min|medium`: lower the phone portrait treatment.
+- `--strength auto` (default): phone → `min`, camera → `high`, unknown → `medium`.
+- `--phone-strength min|medium`: phone level (default `min`; `medium` adds more).
 - `--source auto|phone|camera|unknown`: override EXIF detection for stripped files.
 - `--denoise auto|off|light|medium|strong`: conservative noise reduction.
 - `--sharpen auto|off|light|medium|strong`: output sharpening (acutance).

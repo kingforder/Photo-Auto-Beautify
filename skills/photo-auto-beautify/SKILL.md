@@ -43,7 +43,7 @@ The agent can adjust:
 | “照片发灰 / 颜色闷” | Keep `--vibrance auto` or use `light`; do not add global saturation first |
 | “高光太硬 / 天空刺眼” | Keep `--highlight-rolloff auto`; explain that clipped detail cannot be recovered |
 | “明显偏绿 / 偏黄” | Keep `--wb auto`; do not neutralize a deliberately warm sunset |
-| “手机拍的别修太重 / 相机片保留质感” | Keep `--strength auto`; phone uses `--phone-strength medium` (or `min`), camera uses high; override `--source` only when EXIF is missing or wrong |
+| “手机拍的别修太重 / 相机片保留质感” | Keep `--strength auto`; phone uses `--phone-strength min` (default), camera uses high; override `--source` only when EXIF is missing or wrong |
 | “噪点太多 / 高感太重” | Enable `--denoise light` (or `medium`); inspect flat areas before using `strong` |
 | “锐一点 / 提升锐度” | Use `--sharpen light` (or `medium`); explain that this raises edge acutance, not true detail |
 | “连拍只留最好的” | Keep 1 best frame per burst (default; max 2), verify, then cleanup |
@@ -57,7 +57,7 @@ The agent can adjust:
 | --- | --- | --- |
 | Triage | Stable | Normal / obvious problem / suspect; whole-frame blur is flagged separately |
 | Exposure and color | Stable | Auto white balance, exposure, highlights/shadows, contrast, saturation; auto level by source plus four explicit strengths |
-| Source awareness | Rule-based | EXIF Make/Model → phone / camera / unknown; phone medium or low, camera high, unknown medium |
+| Source awareness | Rule-based | EXIF Make/Model → phone / camera / unknown; phone min, camera high, unknown medium |
 | Scene awareness | Rule-based | Portrait, night, high-key, landscape, general; picks a preset per scene |
 | Portrait | Conservative | Light base + global skin-tone LUT; no face mask, smoothing, or local whitening |
 | Detail | Optional | Conservative denoise and output sharpening; auto by source/ISO, explicit light/medium/strong |
@@ -86,7 +86,7 @@ scripts and references.
 
 | Class | Action |
 | --- | --- |
-| Normal | Source-aware: phone medium (or low), camera high, unknown medium; `--strength` forces one level |
+| Normal | Source-aware: phone min, camera high, unknown medium; `--strength` forces one level |
 | Obvious problem | Keep the original, write a `<name>-fixed.jpg` candidate, then ask |
 | Suspect | Suggestions only; no file |
 | Obvious but unrepairable | Whole-frame blur etc.; recommend a reshoot or focus check |
@@ -98,7 +98,7 @@ Source is inferred from EXIF `Make`/`Model`; no filename guessing. The default
 
 | Source | Default level | Portrait treatment |
 | --- | --- | --- |
-| Phone | `medium` (use `--phone-strength min` for lower) | Light base + 0.65 LUT (0.35 for `min`) |
+| Phone | `min` (default; use `--phone-strength medium` for more) | Light base + 0.35 LUT (0.65 for `medium`) |
 | Camera | `high` | Light base + 1.0 LUT |
 | Unknown | `medium` | Conservative; avoids over-processing stripped files |
 
@@ -108,9 +108,9 @@ Source is inferred from EXIF `Make`/`Model`; no filename guessing. The default
   with stripped metadata or a phone file that reports an unusual make.
 - RAW source detection uses ExifTool when Pillow cannot read the metadata;
   without ExifTool those RAW files fall back to `unknown` (medium).
-- Camera high is the original punchy look; phone medium is deliberately
-  gentler, especially for portraits. Unknown medium is the safe default when
-  provenance cannot be established.
+- Camera high is the original punchy look; phone min is deliberately restrained,
+  especially for portraits. Unknown medium is the safe default when provenance
+  cannot be established.
 
 Output naming:
 
@@ -137,8 +137,8 @@ python scripts\photo-pipeline.py `
   --report "C:\photos\pipeline-report.md"
 ```
 
-- `--strength auto` is the default: phone → medium, camera → high, unknown → medium;
-- `--phone-strength min|medium`: lower phone portraits (default `medium`);
+- `--strength auto` is the default: phone → min, camera → high, unknown → medium;
+- `--phone-strength min|medium`: phone level (default `min`; `medium` for more);
 - `--source auto|phone|camera|unknown`: override EXIF source detection;
 - `--denoise auto|off|light|medium|strong`: noise reduction; auto is conservative;
 - `--sharpen auto|off|light|medium|strong`: output sharpening; auto is camera light;
@@ -220,13 +220,13 @@ details: `references/workflow.md`.
 ## Scenes and styles
 
 - Scenes: `portrait`, `night`, `highkey`, `landscape`, `general`;
-- Strength: `auto` by source by default (phone `medium` or `min`, camera `high`,
-  unknown `medium`); `--strength` forces `min`/`medium`/`high`/`max` for all;
+- Strength: `auto` by source by default (phone `min`, camera `high`, unknown
+  `medium`); `--strength` forces `min`/`medium`/`high`/`max` for all;
 - Portraits use a light base look followed by a **global skin-tone LUT**;
   there is no face mask, smoothing, or local whitening in the default path;
 - The LUT is color-based and smooth; face, neck and hands share the same skin tone;
 - LUT amount scales with level: `min` 0.35, `medium` 0.65, `high` 1.0, `max` 1.15;
-  so a phone/medium portrait is visibly gentler than a camera/high portrait;
+  so a phone/min portrait is visibly gentler than a camera/high portrait;
 - If detected face saturation is already high, a neutral portrait base is used;
 - `max` uses a stronger color-safe portrait base, still without masks;
 - Styles: B&W, light/strong dehaze, night, food; looks live in `assets/looks/`;

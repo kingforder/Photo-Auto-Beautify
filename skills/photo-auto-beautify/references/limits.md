@@ -17,17 +17,17 @@ lighter profile and was not part of that 47-image run.
 | `high` (camera/default) | `rt-look3.pp3` | Punchy, social-ready |
 | `max` | `rt-look4.pp3` | Extra; intentionally allowed to overdo it |
 
-> Source-aware default: phone → `medium`, camera → `high`, unknown → `medium`.
+> Source-aware default: phone → `min`, camera → `high`, unknown → `medium`.
 > `--strength` forces one level for all photos; `--phone-strength min|medium`
-> lowers the phone level further.
+> changes the phone level (default `min`; `medium` adds more).
 >
 > Naming change: the previous `max` level (look3) is now `high`; `max` selects
 > look4, the extra over-the-top level.
 >
 > Portrait `high` uses the light `rt-portrait-light.pp3` (Contrast 10 /
 > Saturation 2), followed by a mask-free global skin-tone LUT. The LUT amount is
-> 1.0 at `high`, 0.65 at `medium`, 0.35 at `min`, and 1.15 at `max`; phone/medium
-> therefore gets a gentler portrait than camera/high. `max` also uses the
+> 1.0 at `high`, 0.65 at `medium`, 0.35 at `min`, and 1.15 at `max`; phone/min
+> therefore gets the gentlest portrait treatment. `max` also uses the
 > stronger `rt-look2-portrait.pp3`. If the detected face saturation is already
 > high, neutral-saturation variants are used.
 
@@ -69,7 +69,7 @@ Near-white pixels in the overexposed frame: camera 57.6% → look2 53.9% → loo
 - Chosen for a punchy, social-ready look, not for documentary realism;
 - Already saturated subjects may lose channel detail; use `medium` when the
   scene should stay natural;
-- Phone images default to `medium` (look2) instead of this level;
+- Phone images default to `min` (look1) instead of this level;
 - It is intentionally stronger than the old default (`look2`).
 
 **Safe upper bound = before channels start clipping**
@@ -94,7 +94,7 @@ Near-white pixels in the overexposed frame: camera 57.6% → look2 53.9% → loo
 | Scene | Recommendation |
 | --- | --- |
 | Camera photo, normal daylight/city | `high` (automatic) |
-| Phone photo | `medium` (automatic); `--phone-strength min` for a lighter portrait |
+| Phone photo | `min` (automatic); `--phone-strength medium` for a stronger portrait |
 | Source metadata missing | `medium` (automatic, conservative); use `--source camera` or `--source phone` when known |
 | Normal daylight, city, overcast | `high` default; `medium` for a natural look |
 | Sunset/night/silhouette | `medium` or `high`; keep the mood; do not lift shadows |

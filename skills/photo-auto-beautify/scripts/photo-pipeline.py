@@ -2,7 +2,7 @@
 """Triage + beautify pipeline.
 
 Policy:
-  * no problem  -> source-aware beauty (phone medium, camera high, unknown medium)
+  * no problem  -> source-aware beauty (phone min, camera high, unknown medium)
   * obvious     -> keep original, write a *-fixed.jpg candidate, ask the user
   * suspect     -> no file, only a suggestion
   * final state -> originals + beauty files + fixed candidates, no previews/temp
@@ -62,7 +62,7 @@ PORTRAIT_LOOKS = {
     "max": "rt-look2-portrait.pp3",
 }
 # The base profile is already light; the global LUT is the variable part.
-# Phone/medium therefore gets a visibly gentler portrait treatment than
+# Phone/min therefore gets a visibly gentler portrait treatment than
 # camera/high without introducing masks or local retouching.
 LUT_AMOUNT = {
     "min": 0.35,
@@ -581,8 +581,8 @@ def main():
     p.add_argument("--strength", choices=["auto", "min", "medium", "high", "max"],
                    default="auto",
                    help="auto by source (default); min/medium/high/max force all photos")
-    p.add_argument("--phone-strength", choices=["min", "medium"], default="medium",
-                   help="level for phone photos when --strength is auto (default medium)")
+    p.add_argument("--phone-strength", choices=["min", "medium"], default="min",
+                   help="level for phone photos when --strength is auto (default min)")
     p.add_argument("--source", choices=["auto", "phone", "camera", "unknown"],
                    default="auto",
                    help="override EXIF source detection (default auto)")
@@ -800,7 +800,7 @@ def main():
         f.write("- Denoising reduces noise but also softens detail; sharpening raises edge acutance and can create halos, but cannot recover missed focus or motion blur.\n")
         f.write("- Finishing: capped neutral-pixel WB, neutral-guarded vibrance, and a gentle highlight shoulder. Auto uses light amounts; `off` disables each.\n")
         f.write("- Highlight rolloff cannot recover detail that was already clipped; it only softens the transition near white.\n")
-        f.write("- Camera general scenes use look3 (`high`); phone/medium uses look2; portraits use the light portrait base.\n")
+        f.write("- Camera general scenes use look3 (`high`); phone uses the selected phone level; portraits use the light portrait base.\n")
         f.write("- Portrait: light base + global skin-tone LUT; the LUT is scaled down for min/medium, so phone portraits stay gentler. No face mask, smoothing, or local whitening.\n")
         f.write("- A high face-saturation reading switches to a neutral portrait base.\n")
         f.write("- Night uses ISO High + the selected look; high-key/food use the selected look.\n")

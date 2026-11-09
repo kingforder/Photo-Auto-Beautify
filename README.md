@@ -14,7 +14,7 @@ The Skill has a shell-only backend. It triages a folder into
 **normal / obvious problem / suspect**, then:
 
 - beautifies normal photos source-aware: phone images at the balanced level (or lower), camera images at the high level;
-- uses a light portrait base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/medium and full on camera/high; no face mask, smoothing, or local whitening;
+- uses a light portrait base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/min and full on camera/high; no face mask, smoothing, or local whitening;
 - adds conservative denoise and output sharpening, auto-tuned by source/ISO; **sharpness means edge acutance, not invented detail**;
 - finishes with capped neutral white balance, neutral-guarded vibrance, and a gentle highlight shoulder; no automatic style conversion;
 - keeps the original and writes a `*-fixed.jpg` candidate for obvious problems;
@@ -91,8 +91,8 @@ python "$Skill\scripts\photo-pipeline.py" `
 ```
 
 - `--strength auto` — default; reads EXIF `Make`/`Model`:
-  phone → `medium`, camera → `high`, unknown → `medium`.
-- `--phone-strength min|medium` — lower the phone level (default `medium`).
+  phone → `min`, camera → `high`, unknown → `medium`.
+- `--phone-strength min|medium` — phone level (default `min`; use `medium` for more).
 - `--source auto|phone|camera|unknown` — override detection when metadata is
   stripped or reports an unusual make.
 - `--denoise auto|off|light|medium|strong` — noise reduction; auto is conservative.

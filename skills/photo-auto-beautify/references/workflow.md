@@ -68,7 +68,7 @@ After preprocessing, apply the normal beauty pass to every retained image:
 - non-burst originals in the input folder.
 
 Best-frame RAW and non-burst originals go through `photo-pipeline.py` normally;
-their EXIF is intact, so `--strength auto` picks phone/medium or camera/high.
+their EXIF is intact, so `--strength auto` picks phone/min or camera/high.
 Stack JPGs are generated files without reliable EXIF, so pass the source
 explicitly (`--source camera` or `--source phone`). Animations are beautified
 frame-by-frame after encoding:
@@ -99,7 +99,7 @@ python scripts\photo-pipeline.py `
   --output-dir "C:\photos\beauty-out\stacks" `
   --source camera --rt-root "C:\path\to\RawTherapee"
 
-# phone stack JPGs: --source phone -> medium (add --phone-strength min for lower)
+# phone stack JPGs: --source phone -> min (add --phone-strength medium for more)
 ```
 
 Implementation note: the animation is encoded from the raster supplied to
