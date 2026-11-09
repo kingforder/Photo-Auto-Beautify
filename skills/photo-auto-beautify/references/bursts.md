@@ -80,6 +80,10 @@ Output filenames use the **best frame's original stem as prefix** (for example
 `P1022859-stack.jpg`, `P1022859.webp`), so the result still points back to the
 source photo. The shorter `burst-001` id remains in the manifest/report only.
 
+Generated stack/animation files may not retain the source EXIF. When running
+`photo-pipeline.py` on a stack JPG, pass `--source camera` or `--source phone`
+so the source-aware level matches the burst origin.
+
 `--apply-cleanup` is intentionally opt-in:
 
 - selected best frames stay in the original input folder; only

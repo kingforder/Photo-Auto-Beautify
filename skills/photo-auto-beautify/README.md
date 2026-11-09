@@ -11,8 +11,8 @@ A shell-only backend for an Agent Skill. Normal photos are beautified
 automatically; obvious problems produce a fixed candidate for confirmation;
 suspect images get suggestions only.
 
-- Default high beauty; `--strength min/medium/high/max` selects the level.
-- Portraits use a light base plus a mask-free global skin-tone LUT.
+- Source-aware default: phone → `medium` (or `--phone-strength min`), camera → `high`, unknown → `medium`; `--strength` forces one level.
+- Portraits use a light base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/medium and full on camera/high.
 - No face mask, smoothing, or local whitening: no cutout edges or pixel artifacts.
 - A saturation guard picks a neutral portrait base when the face is already saturated.
 - Normal RAW → a JPG with the same name; other formats → `<name>-beauty.jpg`.
@@ -42,6 +42,7 @@ HEIC needs `pillow-heif`; JXL needs `ffmpeg` (libjxl).
 - Python 3 + Pillow + NumPy + OpenCV (face/culling/format conversion)
 - `pillow-heif` for HEIC/HEIF; `ffmpeg` for JPEG XL
 - RawTherapee 5.13: `scripts/setup-rt.ps1` on Windows, `scripts/setup-rt.sh` on Linux
+- Optional: `exiftool` for RAW source detection (otherwise RAW stays unknown → medium)
 - Optional: RAWmakase (RAW previews and overexposure correction)
 
 ## Install and use
@@ -59,9 +60,13 @@ Windows example:
 ```powershell
 $env:PYTHONPATH = "..\face-deps"
 python scripts\photo-pipeline.py --input "C:\photos" --output-dir "C:\photos" `
-  --strength high --temp-dir "C:\temp\photo-pipeline" `
+  --temp-dir "C:\temp\photo-pipeline" `
   --report "C:\photos\pipeline-report.md"
 ```
+
+- `--strength auto` (default): phone → `medium`, camera → `high`, unknown → `medium`.
+- `--phone-strength min|medium`: lower the phone portrait treatment.
+- `--source auto|phone|camera|unknown`: override EXIF detection for stripped files.
 
 Linux/WSL example:
 
@@ -73,7 +78,7 @@ pip install -r requirements.txt
 bash scripts/setup-rt.sh
 python3 scripts/photo-pipeline.py \
   --input "$HOME/photos" --output-dir "$HOME/photos" \
-  --strength high --report "$HOME/photos/pipeline-report.md"
+  --report "$HOME/photos/pipeline-report.md"
 ```
 
 Linux needs Pillow/NumPy/OpenCV/pillow-heif in the active Python environment.

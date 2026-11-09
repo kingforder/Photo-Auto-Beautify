@@ -2,7 +2,7 @@
 """Triage + beautify pipeline.
 
 Policy:
-  * no problem  -> medium beauty by default (or min/max), output JPEG
+  * no problem  -> source-aware beauty (phone medium, camera high, unknown medium)
   * obvious     -> keep original, write a *-fixed.jpg candidate, ask the user
   * suspect     -> no file, only a suggestion
   * final state -> originals + beauty files + fixed candidates, no previews/temp
@@ -10,6 +10,7 @@ Policy:
 
 import argparse
 import importlib.util
+import json
 import os
 import re
 import shutil
@@ -60,6 +61,35 @@ PORTRAIT_LOOKS = {
     "high": "rt-portrait-light.pp3",
     "max": "rt-look2-portrait.pp3",
 }
+# The base profile is already light; the global LUT is the variable part.
+# Phone/medium therefore gets a visibly gentler portrait treatment than
+# camera/high without introducing masks or local retouching.
+LUT_AMOUNT = {
+    "min": 0.35,
+    "medium": 0.65,
+    "high": 1.0,
+    "max": 1.15,
+}
+
+PHONE_MAKES = (
+    "apple", "xiaomi", "redmi", "huawei", "honor", "oppo", "vivo",
+    "oneplus", "realme", "google", "motorola", "nokia", "nothing",
+    "zte", "tcl", "alcatel", "meizu", "smartisan", "lenovo", "asus",
+)
+CAMERA_MAKES = (
+    "canon", "nikon", "fujifilm", "panasonic", "olympus",
+    "om digital", "pentax", "ricoh", "leica", "hasselblad",
+    "phase one", "sigma", "mamiya", "contax", "kodak", "dji",
+    "gopro", "insta360", "casio", "sanyo",
+)
+PHONE_MODEL_HINTS = (
+    "iphone", "pixel", "xperia", "redmi", "moto", "sm-", "sm_",
+    "cph-", "xt-", "pgt-", "pjd", "els-", "ana-",
+    "lya-", "bla-", "jny-", "stk-", "bvl-", "vog-", "lio-",
+    "mar-", "tas-", "noh-", "nop-", "nla-", "nth-", "nco-",
+    "xq-", "xq_", "so-",
+)
+SONY_CAMERA_PREFIXES = ("ilce", "ilca", "dsc", "nex", "slt", "zv-", "a7", "a9")
 
 
 def load_face_module():
@@ -141,6 +171,116 @@ def scene_of(m):
     return "general"
 
 
+def exif_text(exif, tag):
+    try:
+        value = exif.get(tag)
+        if value:
+            return str(value).strip()
+    except Exception:
+        pass
+    return ""
+
+
+def exiftool_source_metadata(path):
+    """Read Make/Model/Software/LensModel from RAW or unusual containers."""
+    exe = os.environ.get("EXIFTOOL") or shutil.which("exiftool")
+    if not exe:
+        return {}
+    try:
+        p = subprocess.run(
+            [exe, "-j", "-Make", "-Model", "-Software", "-LensModel", path],
+            capture_output=True, timeout=10,
+        )
+        if p.returncode != 0 or not p.stdout.strip():
+            return {}
+        row = json.loads(p.stdout.decode("utf-8", errors="replace").lstrip("\ufeff"))[0]
+        return {
+            key: str(row.get(key) or "").strip()
+            for key in ("Make", "Model", "Software", "LensModel")
+        }
+    except Exception:
+        return {}
+
+
+def read_source_metadata(path):
+    meta = {"make": "", "model": "", "software": "", "lens": ""}
+    try:
+        image_formats.ensure_heif()
+        with Image.open(path) as im:
+            exif = im.getexif()
+            meta["make"] = exif_text(exif, 271)
+            meta["model"] = exif_text(exif, 272)
+            meta["software"] = exif_text(exif, 305)
+            meta["lens"] = exif_text(exif, 42036)
+    except Exception:
+        pass
+    if not (meta["make"] or meta["model"]):
+        extra = exiftool_source_metadata(path)
+        meta["make"] = meta["make"] or extra.get("Make", "")
+        meta["model"] = meta["model"] or extra.get("Model", "")
+        meta["software"] = meta["software"] or extra.get("Software", "")
+        meta["lens"] = meta["lens"] or extra.get("LensModel", "")
+    return meta
+
+
+def source_from_metadata(meta):
+    """Classify a photo as phone/camera/unknown from Make and Model.
+
+    Ambiguous brands are resolved by model family; a missing or unrecognized
+    tag stays unknown instead of guessing.
+    """
+    make = (meta.get("make") or "").strip()
+    model = (meta.get("model") or "").strip()
+    make_l = make.lower()
+    model_l = model.lower()
+    evidence = " ".join(x for x in (make, model) if x).strip() or "no EXIF Make/Model"
+
+    if "sony ericsson" in make_l:
+        return "phone", evidence
+    if any(hint in model_l for hint in PHONE_MODEL_HINTS):
+        return "phone", evidence
+    if "samsung" in make_l:
+        if model_l.startswith(("nx", "wb")):
+            return "camera", evidence
+        return "phone", evidence
+    if "sony" in make_l:
+        if model_l.startswith(SONY_CAMERA_PREFIXES):
+            return "camera", evidence
+        if "xperia" in model_l:
+            return "phone", evidence
+        return "unknown", evidence
+    if any(token in make_l for token in PHONE_MAKES):
+        return "phone", evidence
+    if any(token in make_l for token in CAMERA_MAKES):
+        return "camera", evidence
+    return "unknown", evidence
+
+
+def detect_source(path, forced="auto"):
+    meta = read_source_metadata(path)
+    source, evidence = source_from_metadata(meta)
+    if forced and forced != "auto":
+        return forced, f"forced {forced}; {evidence}"
+    return source, evidence
+
+
+def effective_strength(source, strength, phone_strength):
+    """Resolve one level per photo; explicit --strength always wins."""
+    if strength != "auto":
+        return strength
+    if source == "phone":
+        return phone_strength
+    if source == "camera":
+        return "high"
+    return "medium"
+
+
+def strength_policy(strength, phone_strength):
+    if strength != "auto":
+        return f"forced {strength} for all photos"
+    return f"auto (phone={phone_strength}, camera=high, unknown=medium)"
+
+
 def unique(path):
     if not os.path.exists(path):
         return path
@@ -218,8 +358,12 @@ def render_rt(src, dst, is_raw, scene, strength, rt, tmp, m=None):
     return dst
 
 
-def global_skin_lut(src, dst):
-    """Mask-free skin-tone whitening via a smooth per-pixel color transform."""
+def global_skin_lut(src, dst, amount=1.0):
+    """Mask-free skin-tone whitening via a smooth per-pixel color transform.
+
+    ``amount`` scales the effect so phone/medium stays gentler than camera/high
+    while using the same base profile and no spatial mask.
+    """
     arr = np.asarray(image_formats.load_rgb(src)).astype(np.uint8)
     hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV).astype(np.float32)
     hue = hsv[..., 0] * 2.0
@@ -230,6 +374,8 @@ def global_skin_lut(src, dst):
         * np.exp(-((sat - 0.35) / 0.22) ** 2)
         * np.clip((val - 0.10) / 0.25, 0.0, 1.0)
     )
+    amount = max(0.0, min(1.5, float(amount)))
+    w = w * amount
     lab = cv2.cvtColor(arr, cv2.COLOR_RGB2LAB).astype(np.float32)
     l, a, b = cv2.split(lab)
     l = l + 9.0 * w
@@ -267,7 +413,14 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--input", required=True)
     p.add_argument("--output-dir")
-    p.add_argument("--strength", choices=["min", "medium", "high", "max"], default="high")
+    p.add_argument("--strength", choices=["auto", "min", "medium", "high", "max"],
+                   default="auto",
+                   help="auto by source (default); min/medium/high/max force all photos")
+    p.add_argument("--phone-strength", choices=["min", "medium"], default="medium",
+                   help="level for phone photos when --strength is auto (default medium)")
+    p.add_argument("--source", choices=["auto", "phone", "camera", "unknown"],
+                   default="auto",
+                   help="override EXIF source detection (default auto)")
     p.add_argument("--rt-root", default=DEFAULT_RT)
     p.add_argument("--rawmakase", default=DEFAULT_RM)
     p.add_argument("--model", default=DEFAULT_MODEL)
@@ -302,6 +455,8 @@ def main():
         for name in files:
             src = os.path.join(args.input, name)
             is_raw = name.lower().endswith(image_formats.RAW_EXT)
+            source, source_evidence = detect_source(src, args.source)
+            strength = effective_strength(source, args.strength, args.phone_strength)
             try:
                 # WebP/AVIF/HEIC/HEIF/JXL are converted to a working TIFF once;
                 # all later steps (RT, face, metrics) use that copy.
@@ -318,10 +473,13 @@ def main():
                 else:
                     preview = working
                 m = measure(preview, face_mod, args.model)
-                rows.append({"file": name, "src": src, "working": working, "raw": is_raw, "preview": preview, "m": m})
+                rows.append({"file": name, "src": src, "working": working, "raw": is_raw,
+                             "preview": preview, "m": m, "source": source,
+                             "source_evidence": source_evidence, "strength": strength})
             except Exception as e:
                 rows.append({"file": name, "src": src, "working": src, "raw": is_raw, "m": None,
-                             "error": str(e), "note": str(e)})
+                             "source": source, "source_evidence": source_evidence,
+                             "strength": strength, "error": str(e), "note": str(e)})
 
         valid = [r for r in rows if r.get("m")]
         median_sharp = float(np.median([r["m"]["sharp"] for r in valid])) if valid else 0
@@ -349,10 +507,10 @@ def main():
             if cls == "ok":
                 dst = beauty_name(r["src"], r["raw"], outdir, args.overwrite_originals)
                 tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(r["src"]))[0] + "-beauty.jpg")
-                render_rt(src, tmp_out, r["raw"], r["scene"], args.strength, args.rt_root, tmp, m)
+                render_rt(src, tmp_out, r["raw"], r["scene"], r["strength"], args.rt_root, tmp, m)
                 if r["scene"] == "portrait":
                     try:
-                        global_skin_lut(tmp_out, dst)
+                        global_skin_lut(tmp_out, dst, LUT_AMOUNT[r["strength"]])
                         r["note"] = "global skin LUT"
                     except Exception:
                         shutil.copy2(tmp_out, dst)
@@ -391,13 +549,15 @@ def main():
 
     with open(args.report, "w", encoding="utf-8-sig") as f:
         f.write("# Auto beautify pipeline report\n\n")
-        f.write(f"Input: {args.input}\n\nStrength: {args.strength}\n\n")
+        f.write(f"Input: {args.input}\n\n")
+        f.write(f"Strength policy: {strength_policy(args.strength, args.phone_strength)}\n\n")
+        f.write(f"Source override: {args.source}\n\n")
         f.write("## Normal photos (beautified)\n\n")
-        f.write("| Original | Scene | Output | Notes |\n| --- | --- | --- | --- |\n")
+        f.write("| Original | Source | Scene | Strength | Output | Notes |\n| --- | --- | --- | --- | --- | --- |\n")
         for r in rows:
             if r["action"] in ("beauty",) or (args.dry_run and r["class"] == "ok"):
                 out = os.path.basename(r["output"]) if r["output"] else "(dry-run)"
-                f.write(f"| {r['file']} | {r['scene']} | {out} | {r['note']} |\n")
+                f.write(f"| {r['file']} | {r['source']} | {r['scene']} | {r['strength']} | {out} | {r['note']} |\n")
         f.write("\n## Obvious problems (fixed candidates, waiting for confirmation)\n\n")
         f.write("| Original | Issue | Fixed file | Method |\n| --- | --- | --- | --- |\n")
         for r in rows:
@@ -421,8 +581,10 @@ def main():
             if r["class"] == "error":
                 f.write(f"| {r['file']} | {r.get('error') or r['note']} |\n")
         f.write("\n## Plan\n\n")
-        f.write("- General scenes use look3 (`high`) by default; portraits use their own light base.\n")
-        f.write("- Portrait: light base + global skin-tone LUT; no face mask, smoothing, or local whitening.\n")
+        f.write("- Source is inferred from EXIF Make/Model: phone uses the phone level, camera uses high, unknown uses medium (conservative).\n")
+        f.write("- `--strength` forces one level for every photo; `--source` overrides EXIF detection when metadata is missing or wrong.\n")
+        f.write("- Camera general scenes use look3 (`high`); phone/medium uses look2; portraits use the light portrait base.\n")
+        f.write("- Portrait: light base + global skin-tone LUT; the LUT is scaled down for min/medium, so phone portraits stay gentler. No face mask, smoothing, or local whitening.\n")
         f.write("- A high face-saturation reading switches to a neutral portrait base.\n")
         f.write("- Night uses ISO High + the selected look; high-key/food use the selected look.\n")
         f.write("- Non-RAW/JPEG/PNG/TIFF inputs are normalized to a working TIFF; obvious overexposed RAW uses RAWmakase XMP -2.5EV.\n")
@@ -431,7 +593,8 @@ def main():
 
     print(f"processed={len(rows)} report={args.report}")
     for r in rows:
-        print(f"  {r['file']}: {r['class']} / {r['scene']} -> {r['action']} {os.path.basename(r['output']) if r['output'] else ''}")
+        print(f"  {r['file']}: {r['source']} / {r['strength']} / {r['class']} / {r['scene']} "
+              f"-> {r['action']} {os.path.basename(r['output']) if r['output'] else ''}")
 
 
 if __name__ == "__main__":

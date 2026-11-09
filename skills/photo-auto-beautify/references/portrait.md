@@ -10,6 +10,12 @@ Because the transform is color-based and continuous, there are no cutout edges
 or pixel-level transition artifacts. Face, neck and hands share the same skin
 tone, so they stay consistent.
 
+The LUT amount follows the effective level: `min` 0.35, `medium` 0.65,
+`high` 1.0, `max` 1.15. With the default `--strength auto`, phone portraits use
+`medium` (gentler), camera portraits use `high` (the original portrait look),
+and unknown sources use `medium` conservatively. `--phone-strength min` makes
+phone portraits lighter still; `--strength` forces one level for every photo.
+
 ## Legacy face-beautify module (optional, not used by default)
 
 The old mask-based module below remains available for experiments (`face-beautify.py`),

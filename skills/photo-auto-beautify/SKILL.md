@@ -1,6 +1,6 @@
 ---
 name: photo-auto-beautify
-description: Agent Skill for local, free batch photo beautification. Import it into an AI agent; the agent adapts presets, levels, and burst cleanup to the user's taste and runs the local scripts. Triage, scene-aware color, portraits, bursts, culling, mainstream formats; originals preserved.
+description: Agent Skill for local, free batch photo beautification. Import it into an AI agent; the agent adapts presets, levels, and burst cleanup to the user's taste and runs the local scripts. Triage, source-aware levels, scene-aware color, portraits, bursts, culling, mainstream formats; originals preserved.
 license: 0BSD
 ---
 
@@ -14,16 +14,18 @@ license: 0BSD
 > auditing/debugging), not instructions the end user should have to memorize.
 
 Turn a folder of originals into deliverable results: triage first, then either
-beautify, produce a fixed candidate, or suggest only. The default is the high
-look; originals are never modified; only originals and results remain.
+beautify, produce a fixed candidate, or suggest only. Levels are source-aware by
+default: phone images use balanced/low beauty, camera images use the high look;
+originals are never modified; only originals and results remain.
 
 ## How the agent should use this Skill
 
 1. **Translate intent, not flags.** “自然一点 / 不要假白 / 皮肤白一点 /
    保留眼镜阴影 / 连拍只留最好的” are preferences. Choose the closest
    strength, portrait base, LUT behavior, burst mode, and cleanup policy.
-2. **Inspect before deciding.** Read the triage report and scene counts; do not
-   blindly apply the same level to portraits, night, landscape, and bursts.
+2. **Inspect before deciding.** Read the triage report, source counts, and scene
+   counts; do not blindly apply the same level to portraits, night, landscape,
+   and bursts.
 3. **Stay inside the documented boundaries.** The agent may tune levels,
    profiles, burst thresholds, and cleanup choices, but must not invent face
    reshaping, sky replacement, or generative edits.
@@ -38,6 +40,7 @@ The agent can adjust:
 | --- | --- |
 | “自然一点 / 不要假白” | Prefer lower portrait base / neutral look; keep shadows |
 | “脸再白一点” | Adjust portrait whitening/LUT strength within safe limits |
+| “手机拍的别修太重 / 相机片保留质感” | Keep `--strength auto`; phone uses `--phone-strength medium` (or `min`), camera uses high; override `--source` only when EXIF is missing or wrong |
 | “连拍只留最好的” | Keep 1 best frame per burst (default; max 2), verify, then cleanup |
 | “不要动原片” | Skip `--apply-cleanup`; keep best frames in place |
 | “要动图 / 不要堆叠” | Enable animation, skip stack; respect motion guards |
@@ -48,7 +51,8 @@ The agent can adjust:
 | Area | Status | Notes |
 | --- | --- | --- |
 | Triage | Stable | Normal / obvious problem / suspect; whole-frame blur is flagged separately |
-| Exposure and color | Stable | Auto white balance, exposure, highlights/shadows, contrast, saturation; four strengths |
+| Exposure and color | Stable | Auto white balance, exposure, highlights/shadows, contrast, saturation; auto level by source plus four explicit strengths |
+| Source awareness | Rule-based | EXIF Make/Model → phone / camera / unknown; phone medium or low, camera high, unknown medium |
 | Scene awareness | Rule-based | Portrait, night, high-key, landscape, general; picks a preset per scene |
 | Portrait | Conservative | Light base + global skin-tone LUT; no face mask, smoothing, or local whitening |
 | Styles | Extensible | B&W, dehaze, night, food; more looks can be added |
@@ -75,10 +79,31 @@ scripts and references.
 
 | Class | Action |
 | --- | --- |
-| Normal | High beauty by default; `min`/`medium`/`max` when the user asks |
+| Normal | Source-aware: phone medium (or low), camera high, unknown medium; `--strength` forces one level |
 | Obvious problem | Keep the original, write a `<name>-fixed.jpg` candidate, then ask |
 | Suspect | Suggestions only; no file |
 | Obvious but unrepairable | Whole-frame blur etc.; recommend a reshoot or focus check |
+
+### Source-aware levels
+
+Source is inferred from EXIF `Make`/`Model`; no filename guessing. The default
+`--strength auto` maps it like this:
+
+| Source | Default level | Portrait treatment |
+| --- | --- | --- |
+| Phone | `medium` (use `--phone-strength min` for lower) | Light base + 0.65 LUT (0.35 for `min`) |
+| Camera | `high` | Light base + 1.0 LUT |
+| Unknown | `medium` | Conservative; avoids over-processing stripped files |
+
+- `--strength min|medium|high|max` forces that level for every photo, including
+  phones; use it when the user explicitly asks for one look.
+- `--source phone|camera|unknown` overrides detection, for example a camera RAW
+  with stripped metadata or a phone file that reports an unusual make.
+- RAW source detection uses ExifTool when Pillow cannot read the metadata;
+  without ExifTool those RAW files fall back to `unknown` (medium).
+- Camera high is the original punchy look; phone medium is deliberately
+  gentler, especially for portraits. Unknown medium is the safe default when
+  provenance cannot be established.
 
 Output naming:
 
@@ -102,10 +127,12 @@ insists and accepts the irreversible result should you add
 ```powershell
 python scripts\photo-pipeline.py `
   --input "C:\photos" --output-dir "C:\photos" `
-  --strength high `
   --report "C:\photos\pipeline-report.md"
 ```
 
+- `--strength auto` is the default: phone → medium, camera → high, unknown → medium;
+- `--phone-strength min|medium`: lower phone portraits (default `medium`);
+- `--source auto|phone|camera|unknown`: override EXIF source detection;
 - `--dry-run`: plan only;
 - `--temp-dir`: writable temp folder for restricted environments;
 - `--overwrite-originals`: dangerous, JPG/JPEG only, explicit user request only;
@@ -127,7 +154,8 @@ pose, or moment), never just to preserve extra coverage. Invalid/suspect frames
 are skipped when valid alternatives exist. `--apply-cleanup` is opt-in and
 moves only the remaining burst RAW files to `<input>/待删除`; the selected best
 files stay in place. Cleanup is skipped for a group if its best frames cannot
-be verified in the input folder.
+be verified in the input folder. Generated stack JPGs have no reliable EXIF;
+when beautifying them, pass `--source camera` or `--source phone` explicitly.
 
 For RAW files, metadata can come from the original RAW while pixels come from
 rendered JPGs with the same stem:
@@ -182,11 +210,13 @@ details: `references/workflow.md`.
 ## Scenes and styles
 
 - Scenes: `portrait`, `night`, `highkey`, `landscape`, `general`;
-- Strength: `min` natural, `medium` balanced, `high` default punchy for general
-  scenes, `max` extra (intentionally allowed to overdo it);
+- Strength: `auto` by source by default (phone `medium` or `min`, camera `high`,
+  unknown `medium`); `--strength` forces `min`/`medium`/`high`/`max` for all;
 - Portraits use a light base look followed by a **global skin-tone LUT**;
   there is no face mask, smoothing, or local whitening in the default path;
 - The LUT is color-based and smooth; face, neck and hands share the same skin tone;
+- LUT amount scales with level: `min` 0.35, `medium` 0.65, `high` 1.0, `max` 1.15;
+  so a phone/medium portrait is visibly gentler than a camera/high portrait;
 - If detected face saturation is already high, a neutral portrait base is used;
 - `max` uses a stronger color-safe portrait base, still without masks;
 - Styles: B&W, light/strong dehaze, night, food; looks live in `assets/looks/`;

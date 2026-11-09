@@ -67,8 +67,10 @@ After preprocessing, apply the normal beauty pass to every retained image:
 - **animation** frames/output;
 - non-burst originals in the input folder.
 
-Best-frame RAW and non-burst originals go through `photo-pipeline.py` normally.
-Stack JPGs can be processed as a separate input folder. Animations are beautified
+Best-frame RAW and non-burst originals go through `photo-pipeline.py` normally;
+their EXIF is intact, so `--strength auto` picks phone/medium or camera/high.
+Stack JPGs are generated files without reliable EXIF, so pass the source
+explicitly (`--source camera` or `--source phone`). Animations are beautified
 frame-by-frame after encoding:
 
 ```powershell
@@ -80,21 +82,24 @@ python scripts\burst-animate-beautify.py `
 ```
 
 This decodes each neutral animation, renders every frame with the same look,
-and re-encodes while preserving durations and loop.
+and re-encodes while preserving durations and loop. Use `rt-look3.pp3` for
+camera bursts and `rt-look2.pp3` for phone bursts (or a lower look if asked).
 
 The current CLI split is:
 
 ```powershell
-# best RAW + non-burst originals
+# best RAW + non-burst originals (EXIF intact: auto source-aware level)
 python scripts\photo-pipeline.py `
   --input "C:\photos" --output-dir "C:\photos\beauty-out" `
-  --strength high --rt-root "C:\path\to\RawTherapee"
+  --rt-root "C:\path\to\RawTherapee"
 
-# stack JPGs (put them in a stacks-only folder first)
+# camera stack JPGs (generated files: force source; --source camera -> high)
 python scripts\photo-pipeline.py `
   --input "C:\photos\bursts\stacks" `
   --output-dir "C:\photos\beauty-out\stacks" `
-  --strength high --rt-root "C:\path\to\RawTherapee"
+  --source camera --rt-root "C:\path\to\RawTherapee"
+
+# phone stack JPGs: --source phone -> medium (add --phone-strength min for lower)
 ```
 
 Implementation note: the animation is encoded from the raster supplied to

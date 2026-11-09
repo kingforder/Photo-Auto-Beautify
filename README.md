@@ -13,17 +13,18 @@
 The Skill has a shell-only backend. It triages a folder into
 **normal / obvious problem / suspect**, then:
 
-- beautifies normal photos at the high strength by default;
-- uses a light portrait base plus a mask-free global skin-tone LUT; no face mask, smoothing, or local whitening;
+- beautifies normal photos source-aware: phone images at the balanced level (or lower), camera images at the high level;
+- uses a light portrait base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/medium and full on camera/high; no face mask, smoothing, or local whitening;
 - keeps the original and writes a `*-fixed.jpg` candidate for obvious problems;
 - only reports suggestions for suspect or unrepairable images;
 - detects bursts, keeps one best frame by default (max two, only for a clearly different keeper), and optionally stacks or animates them (separate, non-destructive pass); best frames stay in the original folder and remaining burst RAW can optionally be moved to a review folder;
 - removes previews and temporary files, leaving originals + results.
 
 Built for RAW and mainstream raster formats (JPEG/PNG/TIFF/WebP/AVIF/HEIC/JXL/
-BMP/GIF), with scene-aware presets (portrait / night / high-key / landscape /
-general), burst preprocessing, and no full-frame generative edits. The agent may
-adjust levels and presets to the user's request within the documented limits.
+BMP/GIF), with source-aware levels, scene-aware presets (portrait / night /
+high-key / landscape / general), burst preprocessing, and no full-frame
+generative edits. The agent may adjust levels and presets to the user's request
+within the documented limits.
 
 ## Built on open source
 
@@ -72,6 +73,7 @@ claude --plugin-dir .
 - Python 3.10+ with Pillow, NumPy, OpenCV
 - `pillow-heif` for HEIC/HEIF, `ffmpeg` (libjxl) for JPEG XL
 - RawTherapee 5.13: `scripts/setup-rt.ps1` on Windows, `scripts/setup-rt.sh` on Linux
+- Optional: `exiftool` for RAW `Make`/`Model` (source detection; without it RAW is treated as unknown)
 - Optional: RAWmakase (MIT) for RAW previews and overexposure correction
 
 ## Usage
@@ -82,13 +84,17 @@ $env:PYTHONPATH = "..\face-deps"
 
 python "$Skill\scripts\photo-pipeline.py" `
   --input "C:\photos" --output-dir "C:\photos" `
-  --strength high `
   --temp-dir "C:\temp\photo-pipeline" `
   --report "C:\photos\pipeline-report.md"
 ```
 
-- `--strength min|medium|high|max` — default `high`; `max` is intentionally
-  over-the-top for users who want maximum punch.
+- `--strength auto` — default; reads EXIF `Make`/`Model`:
+  phone → `medium`, camera → `high`, unknown → `medium`.
+- `--phone-strength min|medium` — lower the phone level (default `medium`).
+- `--source auto|phone|camera|unknown` — override detection when metadata is
+  stripped or reports an unusual make.
+- `--strength min|medium|high|max` — force one level for every photo; `max` is
+  intentionally over-the-top for users who want maximum punch.
 - `--dry-run` — plan only, no output.
 - Normal RAW → `<name>.jpg`; other normal formats → `<name>-beauty.jpg`.
 - Obvious → `<name>-fixed.jpg`; ask the user before keeping it.
@@ -105,7 +111,6 @@ pip install -r requirements.txt
 bash scripts/setup-rt.sh
 python3 scripts/photo-pipeline.py \
   --input "$HOME/photos" --output-dir "$HOME/photos" \
-  --strength high \
   --report "$HOME/photos/pipeline-report.md"
 ```
 
