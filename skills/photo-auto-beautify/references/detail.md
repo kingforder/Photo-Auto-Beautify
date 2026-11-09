@@ -75,5 +75,6 @@ default; `strong` denoise plus `strong` sharpening can produce plastic skin.
 ## Related
 
 - `references/limits.md`: overall strength/decision matrix;
+- `references/finishing.md`: low-risk WB, vibrance and highlight rolloff;
 - `references/portrait.md`: portrait-specific treatment;
 - `SKILL.md`: agent-facing defaults and preference mapping.

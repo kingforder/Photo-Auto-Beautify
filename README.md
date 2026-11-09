@@ -16,6 +16,7 @@ The Skill has a shell-only backend. It triages a folder into
 - beautifies normal photos source-aware: phone images at the balanced level (or lower), camera images at the high level;
 - uses a light portrait base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/medium and full on camera/high; no face mask, smoothing, or local whitening;
 - adds conservative denoise and output sharpening, auto-tuned by source/ISO; **sharpness means edge acutance, not invented detail**;
+- finishes with capped neutral white balance, neutral-guarded vibrance, and a gentle highlight shoulder; no automatic style conversion;
 - keeps the original and writes a `*-fixed.jpg` candidate for obvious problems;
 - only reports suggestions for suspect or unrepairable images;
 - detects bursts, keeps one best frame by default (max two, only for a clearly different keeper), and optionally stacks or animates them (separate, non-destructive pass); best frames stay in the original folder and remaining burst RAW can optionally be moved to a review folder;
@@ -96,6 +97,9 @@ python "$Skill\scripts\photo-pipeline.py" `
   stripped or reports an unusual make.
 - `--denoise auto|off|light|medium|strong` — noise reduction; auto is conservative.
 - `--sharpen auto|off|light|medium|strong` — output sharpening; auto is camera light.
+- `--wb auto|off` — capped neutral-cast correction.
+- `--vibrance auto|off|light|medium` — neutral-guarded color lift.
+- `--highlight-rolloff auto|off|light|medium` — gentle highlight shoulder.
 - `--strength min|medium|high|max` — force one level for every photo; `max` is
   intentionally over-the-top for users who want maximum punch.
 - `--dry-run` — plan only, no output.

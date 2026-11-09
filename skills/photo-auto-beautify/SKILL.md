@@ -1,6 +1,6 @@
 ---
 name: photo-auto-beautify
-description: Agent Skill for local, free batch photo beautification. Import it into an AI agent; the agent adapts presets, levels, and burst cleanup to the user's taste and runs the local scripts. Triage, source-aware levels, scene-aware color, denoise/sharpness, portraits, bursts, culling, mainstream formats; originals preserved.
+description: Agent Skill for local, free batch photo beautification. Import it into an AI agent; the agent adapts presets, levels, and burst cleanup to the user's taste and runs the local scripts. Triage, source-aware levels, scene-aware color, denoise/sharpness, low-risk finishing, portraits, bursts, culling, mainstream formats; originals preserved.
 license: 0BSD
 ---
 
@@ -40,6 +40,9 @@ The agent can adjust:
 | --- | --- |
 | “自然一点 / 不要假白” | Prefer lower portrait base / neutral look; keep shadows |
 | “脸再白一点” | Adjust portrait whitening/LUT strength within safe limits |
+| “照片发灰 / 颜色闷” | Keep `--vibrance auto` or use `light`; do not add global saturation first |
+| “高光太硬 / 天空刺眼” | Keep `--highlight-rolloff auto`; explain that clipped detail cannot be recovered |
+| “明显偏绿 / 偏黄” | Keep `--wb auto`; do not neutralize a deliberately warm sunset |
 | “手机拍的别修太重 / 相机片保留质感” | Keep `--strength auto`; phone uses `--phone-strength medium` (or `min`), camera uses high; override `--source` only when EXIF is missing or wrong |
 | “噪点太多 / 高感太重” | Enable `--denoise light` (or `medium`); inspect flat areas before using `strong` |
 | “锐一点 / 提升锐度” | Use `--sharpen light` (or `medium`); explain that this raises edge acutance, not true detail |
@@ -58,6 +61,7 @@ The agent can adjust:
 | Scene awareness | Rule-based | Portrait, night, high-key, landscape, general; picks a preset per scene |
 | Portrait | Conservative | Light base + global skin-tone LUT; no face mask, smoothing, or local whitening |
 | Detail | Optional | Conservative denoise and output sharpening; auto by source/ISO, explicit light/medium/strong |
+| Finishing | Conservative | Capped neutral WB, neutral-guarded vibrance, gentle highlight rolloff; no style conversion |
 | Styles | Extensible | B&W, dehaze, night, food; more looks can be added |
 | Culling | Stable | Blur, exposure outliers, near-duplicates; reports only, never deletes |
 | Bursts | Optional | Preprocess first: group, best, stack/animation, optional cleanup; beauty retained outputs after |
@@ -138,6 +142,7 @@ python scripts\photo-pipeline.py `
 - `--source auto|phone|camera|unknown`: override EXIF source detection;
 - `--denoise auto|off|light|medium|strong`: noise reduction; auto is conservative;
 - `--sharpen auto|off|light|medium|strong`: output sharpening; auto is camera light;
+- `--wb auto|off`, `--vibrance auto|off|light|medium`, `--highlight-rolloff auto|off|light|medium`: low-risk finishing;
 - `--dry-run`: plan only;
 - `--temp-dir`: writable temp folder for restricted environments;
 - `--overwrite-originals`: dangerous, JPG/JPEG only, explicit user request only;
@@ -257,6 +262,29 @@ Default `--denoise auto` / `--sharpen auto`:
 - These controls cannot invent detail: a blurry or out-of-focus frame stays
   blurry. Do not promise “resolution enhancement”.
 
+## Finishing
+
+Three low-risk finishing controls run after the RawTherapee render and portrait
+LUT. All are global; none is a style conversion.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--wb auto|off` | `auto` | Corrects only a small, confident cast from near-neutral pixels; capped at 2 LAB units |
+| `--vibrance auto|off|light|medium` | `auto` (`light`) | Lifts muted colors while protecting skin and near-neutral pixels |
+| `--highlight-rolloff auto|off|light|medium` | `auto` (`light`) | Softens the shoulder into near-white |
+
+- `--wb auto` skips images without enough neutral pixels; it must not neutralize
+  a deliberately warm sunset or colored wall.
+- Vibrance has a neutral guard so clouds/walls do not turn pink, and a skin guard
+  so faces do not go orange. Global saturation is not increased further.
+- Highlight rolloff is not highlight reconstruction; clipped detail stays
+  clipped. It only makes the transition into white less harsh.
+- Use `off` for any control when the user wants a strictly untouched color
+  response. `medium` is available but should be checked at 100%.
+- Style packs, film simulation, duotone, sky replacement, and generative edits
+  are **not** part of this pass; a style change requires an explicit user
+  decision and a separate request.
+
 ## Boundaries
 
 - No face reshaping, face swap, sky replacement, or generative rewriting;
@@ -270,6 +298,7 @@ Default `--denoise auto` / `--sharpen auto`:
 
 - `references/limits.md`: tested strength limits and decision matrix
 - `references/detail.md`: denoise, sharpness/acutance, and their limits
+- `references/finishing.md`: WB, vibrance, highlight rolloff, and style boundaries
 - `references/portrait.md`: portrait capabilities and limits
 - `references/bursts.md`: burst grouping, stacking, animation, and limits
 - `references/workflow.md`: burst-first preprocessing then beauty order

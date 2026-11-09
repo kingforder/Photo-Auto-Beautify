@@ -13,6 +13,7 @@ suspect images get suggestions only.
 
 - Source-aware default: phone → `medium` (or `--phone-strength min`), camera → `high`, unknown → `medium`; `--strength` forces one level.
 - Conservative detail pass: denoise and output sharpening are auto-tuned by source/ISO; sharpening raises edge acutance, not real detail.
+- Low-risk finishing: capped neutral WB, neutral-guarded vibrance, and a gentle highlight shoulder; no automatic style conversion.
 - Portraits use a light base plus a mask-free global skin-tone LUT; the LUT is gentler on phone/medium and full on camera/high.
 - No face mask, smoothing, or local whitening: no cutout edges or pixel artifacts.
 - A saturation guard picks a neutral portrait base when the face is already saturated.
@@ -70,6 +71,7 @@ python scripts\photo-pipeline.py --input "C:\photos" --output-dir "C:\photos" `
 - `--source auto|phone|camera|unknown`: override EXIF detection for stripped files.
 - `--denoise auto|off|light|medium|strong`: conservative noise reduction.
 - `--sharpen auto|off|light|medium|strong`: output sharpening (acutance).
+- `--wb auto|off`, `--vibrance auto|off|light|medium`, `--highlight-rolloff auto|off|light|medium`: low-risk finishing.
 
 Linux/WSL example:
 

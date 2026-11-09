@@ -80,6 +80,14 @@ SHARPEN_LOOKS = {
     "medium": "rt-sharpen-medium.pp3",
     "strong": "rt-sharpen-strong.pp3",
 }
+VIBRANCE_AMOUNT = {
+    "light": 0.06,
+    "medium": 0.12,
+}
+ROLLOFF_EXP = {
+    "light": 1.12,
+    "medium": 1.22,
+}
 
 PHONE_MAKES = (
     "apple", "xiaomi", "redmi", "huawei", "honor", "oppo", "vivo",
@@ -419,13 +427,9 @@ def render_rt(src, dst, is_raw, scene, strength, rt, tmp, m=None,
     return dst
 
 
-def global_skin_lut(src, dst, amount=1.0):
-    """Mask-free skin-tone whitening via a smooth per-pixel color transform.
-
-    ``amount`` scales the effect so phone/medium stays gentler than camera/high
-    while using the same base profile and no spatial mask.
-    """
-    arr = np.asarray(image_formats.load_rgb(src)).astype(np.uint8)
+def skin_lut_array(rgb, amount=1.0):
+    """Mask-free skin-tone whitening on an RGB uint8 array."""
+    arr = np.asarray(rgb).astype(np.uint8)
     hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV).astype(np.float32)
     hue = hsv[..., 0] * 2.0
     sat = hsv[..., 1] / 255.0
@@ -442,11 +446,111 @@ def global_skin_lut(src, dst, amount=1.0):
     l = l + 9.0 * w
     a = 128.0 + (a - 128.0) * (1.0 - 0.10 * w)
     b = 128.0 + (b - 128.0) * (1.0 - 0.16 * w)
-    out = cv2.cvtColor(
-        cv2.merge([l, np.clip(a, 0, 255), np.clip(b, 0, 255)]).astype(np.uint8),
+    return cv2.cvtColor(
+        cv2.merge([np.clip(l, 0, 255), np.clip(a, 0, 255), np.clip(b, 0, 255)]).astype(np.uint8),
         cv2.COLOR_LAB2RGB,
     )
+
+
+def global_skin_lut(src, dst, amount=1.0):
+    """Save a mask-free skin-tone whitening result for compatibility/tests."""
+    arr = np.asarray(image_formats.load_rgb(src)).astype(np.uint8)
+    out = skin_lut_array(arr, amount)
     Image.fromarray(out).save(dst, quality=95, subsampling=0)
+    return dst
+
+
+def neutral_white_balance(rgb):
+    """Correct only a small, confident cast from near-neutral pixels.
+
+    The correction is capped at 2 LAB units and skipped when there are too few
+    neutral pixels, so sunsets, foliage and strongly colored scenes are left
+    alone rather than being forced to gray.
+    """
+    arr = np.asarray(rgb).astype(np.uint8)
+    lab = cv2.cvtColor(arr, cv2.COLOR_RGB2LAB).astype(np.float32)
+    l, a, b = cv2.split(lab)
+    chroma = np.sqrt((a - 128.0) ** 2 + (b - 128.0) ** 2)
+    mask = (chroma < 6) & (l > 25) & (l < 235)
+    if int(mask.sum()) < 2000:
+        return arr
+    da = float(a[mask].mean() - 128.0)
+    db = float(b[mask].mean() - 128.0)
+    if abs(da) <= 1.0 and abs(db) <= 1.0:
+        return arr
+    ca = float(np.clip(-da * 0.35, -2.0, 2.0))
+    cb = float(np.clip(-db * 0.35, -2.0, 2.0))
+    return cv2.cvtColor(
+        cv2.merge([
+            np.clip(l, 0, 255),
+            np.clip(a + ca, 0, 255),
+            np.clip(b + cb, 0, 255),
+        ]).astype(np.uint8),
+        cv2.COLOR_LAB2RGB,
+    )
+
+
+def add_vibrance(rgb, amount):
+    """Lift muted colors while protecting near-neutral and skin pixels."""
+    arr = np.asarray(rgb).astype(np.uint8)
+    hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV).astype(np.float32)
+    hue = hsv[..., 0] * 2.0
+    sat = hsv[..., 1] / 255.0
+    val = hsv[..., 2] / 255.0
+    skin = (
+        np.exp(-((hue - 30.0) / 16.0) ** 2)
+        * np.exp(-((sat - 0.4) / 0.25) ** 2)
+    )
+    # Do not invent color in almost-neutral pixels (clouds, gray walls).
+    neutral = np.clip(sat / 0.15, 0.0, 1.0)
+    boost = (
+        float(amount)
+        * neutral
+        * (1.0 - sat) ** 2
+        * (0.4 + 0.6 * val)
+        * (1.0 - 0.85 * skin)
+    )
+    hsv[..., 1] = np.clip((sat + boost) * 255.0, 0, 255)
+    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB)
+
+
+def highlight_rolloff(rgb, exponent):
+    """Gentle shoulder above L=190; keeps white at white but softens highlights."""
+    arr = np.asarray(rgb).astype(np.uint8)
+    lab = cv2.cvtColor(arr, cv2.COLOR_RGB2LAB).astype(np.float32)
+    l, a, b = cv2.split(lab)
+    threshold = 190.0
+    u = np.clip((l - threshold) / (255.0 - threshold), 0.0, 1.0)
+    l = np.where(l > threshold, threshold + (255.0 - threshold) * np.power(u, exponent), l)
+    return cv2.cvtColor(
+        cv2.merge([
+            np.clip(l, 0, 255),
+            np.clip(a, 0, 255),
+            np.clip(b, 0, 255),
+        ]).astype(np.uint8),
+        cv2.COLOR_LAB2RGB,
+    )
+
+
+def resolve_finish(wb, vibrance, rolloff):
+    if vibrance == "auto":
+        vibrance = "light"
+    if rolloff == "auto":
+        rolloff = "light"
+    return wb, vibrance, rolloff
+
+
+def finalize_image(src, dst, scene, strength, wb, vibrance, rolloff):
+    rgb = np.asarray(image_formats.load_rgb(src)).astype(np.uint8)
+    if scene == "portrait":
+        rgb = skin_lut_array(rgb, LUT_AMOUNT[strength])
+    if wb != "off":
+        rgb = neutral_white_balance(rgb)
+    if vibrance != "off":
+        rgb = add_vibrance(rgb, VIBRANCE_AMOUNT[vibrance])
+    if rolloff != "off":
+        rgb = highlight_rolloff(rgb, ROLLOFF_EXP[rolloff])
+    Image.fromarray(rgb).save(dst, quality=95, subsampling=0)
     return dst
 
 
@@ -488,6 +592,14 @@ def main():
     p.add_argument("--sharpen", choices=["auto", "off", "light", "medium", "strong"],
                    default="auto",
                    help="output sharpening: auto is light for camera only (default auto)")
+    p.add_argument("--wb", choices=["auto", "off"], default="auto",
+                   help="small neutral-cast correction; auto is capped and off for low confidence")
+    p.add_argument("--vibrance", choices=["auto", "off", "light", "medium"],
+                   default="auto",
+                   help="protect-neutral vibrance; auto is light (default auto)")
+    p.add_argument("--highlight-rolloff", choices=["auto", "off", "light", "medium"],
+                   default="auto",
+                   help="gentle highlight shoulder; auto is light (default auto)")
     p.add_argument("--rt-root", default=DEFAULT_RT)
     p.add_argument("--rawmakase", default=DEFAULT_RM)
     p.add_argument("--model", default=DEFAULT_MODEL)
@@ -527,6 +639,7 @@ def main():
             iso = int(meta.get("iso") or 0)
             strength = effective_strength(source, args.strength, args.phone_strength)
             denoise, sharpen = resolve_detail(source, iso, args.denoise, args.sharpen)
+            wb, vibrance, rolloff = resolve_finish(args.wb, args.vibrance, args.highlight_rolloff)
             try:
                 # WebP/AVIF/HEIC/HEIF/JXL are converted to a working TIFF once;
                 # all later steps (RT, face, metrics) use that copy.
@@ -547,12 +660,14 @@ def main():
                              "preview": preview, "m": m, "source": source,
                              "source_evidence": source_evidence, "iso": iso,
                              "strength": strength, "denoise": denoise,
-                             "sharpen": sharpen})
+                             "sharpen": sharpen, "wb": wb, "vibrance": vibrance,
+                             "rolloff": rolloff})
             except Exception as e:
                 rows.append({"file": name, "src": src, "working": src, "raw": is_raw, "m": None,
                              "source": source, "source_evidence": source_evidence,
                              "iso": iso, "strength": strength, "denoise": denoise,
-                             "sharpen": sharpen, "error": str(e), "note": str(e)})
+                             "sharpen": sharpen, "wb": wb, "vibrance": vibrance,
+                             "rolloff": rolloff, "error": str(e), "note": str(e)})
 
         valid = [r for r in rows if r.get("m")]
         median_sharp = float(np.median([r["m"]["sharp"] for r in valid])) if valid else 0
@@ -580,15 +695,37 @@ def main():
             if cls == "ok":
                 dst = beauty_name(r["src"], r["raw"], outdir, args.overwrite_originals)
                 tmp_out = os.path.join(tmp, os.path.splitext(os.path.basename(r["src"]))[0] + "-beauty.jpg")
-                render_rt(src, tmp_out, r["raw"], r["scene"], r["strength"],
-                          args.rt_root, tmp, m, r["denoise"], r["sharpen"])
-                if r["scene"] == "portrait":
+                try:
+                    render_rt(src, tmp_out, r["raw"], r["scene"], r["strength"],
+                              args.rt_root, tmp, m, r["denoise"], r["sharpen"])
+                except Exception as e:
+                    r["class"] = "error"
+                    r["note"] = f"render failed: {e}"
+                    r["action"] = "suggest"
+                    continue
+                needs_finish = (
+                    r["scene"] == "portrait"
+                    or r["wb"] != "off"
+                    or r["vibrance"] != "off"
+                    or r["rolloff"] != "off"
+                )
+                if needs_finish:
                     try:
-                        global_skin_lut(tmp_out, dst, LUT_AMOUNT[r["strength"]])
-                        r["note"] = "global skin LUT"
+                        finalize_image(tmp_out, dst, r["scene"], r["strength"],
+                                       r["wb"], r["vibrance"], r["rolloff"])
+                        notes = []
+                        if r["scene"] == "portrait":
+                            notes.append("global skin LUT")
+                        if r["wb"] != "off":
+                            notes.append(f"WB {r['wb']}")
+                        if r["vibrance"] != "off":
+                            notes.append(f"vibrance {r['vibrance']}")
+                        if r["rolloff"] != "off":
+                            notes.append(f"highlight rolloff {r['rolloff']}")
+                        r["note"] = "; ".join(notes)
                     except Exception:
                         shutil.copy2(tmp_out, dst)
-                        r["note"] = "skin LUT failed; base only"
+                        r["note"] = "skin LUT/finish failed; base only"
                 else:
                     shutil.copy2(tmp_out, dst)
                 if os.path.abspath(dst) == os.path.abspath(r["src"]):
@@ -627,12 +764,13 @@ def main():
         f.write(f"Strength policy: {strength_policy(args.strength, args.phone_strength)}\n\n")
         f.write(f"Source override: {args.source}\n\n")
         f.write("## Normal photos (beautified)\n\n")
-        f.write("| Original | Source | Scene | Strength | Detail | Output | Notes |\n| --- | --- | --- | --- | --- | --- | --- |\n")
+        f.write("| Original | Source | Scene | Strength | Detail | Finish | Output | Notes |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n")
         for r in rows:
             if r["action"] in ("beauty",) or (args.dry_run and r["class"] == "ok"):
                 out = os.path.basename(r["output"]) if r["output"] else "(dry-run)"
                 detail = f"DN {r['denoise']} / SH {r['sharpen']}"
-                f.write(f"| {r['file']} | {r['source']} | {r['scene']} | {r['strength']} | {detail} | {out} | {r['note']} |\n")
+                finish = f"WB {r['wb']} / VIB {r['vibrance']} / ROLL {r['rolloff']}"
+                f.write(f"| {r['file']} | {r['source']} | {r['scene']} | {r['strength']} | {detail} | {finish} | {out} | {r['note']} |\n")
         f.write("\n## Obvious problems (fixed candidates, waiting for confirmation)\n\n")
         f.write("| Original | Issue | Fixed file | Method |\n| --- | --- | --- | --- |\n")
         for r in rows:
@@ -660,6 +798,8 @@ def main():
         f.write("- `--strength` forces one level for every photo; `--source` overrides EXIF detection when metadata is missing or wrong.\n")
         f.write("- Detail is conservative: denoise auto is phone at ISO 800+, camera at ISO 1600+; sharpening auto is camera light; phone/unknown off. Stronger levels are explicit.\n")
         f.write("- Denoising reduces noise but also softens detail; sharpening raises edge acutance and can create halos, but cannot recover missed focus or motion blur.\n")
+        f.write("- Finishing: capped neutral-pixel WB, neutral-guarded vibrance, and a gentle highlight shoulder. Auto uses light amounts; `off` disables each.\n")
+        f.write("- Highlight rolloff cannot recover detail that was already clipped; it only softens the transition near white.\n")
         f.write("- Camera general scenes use look3 (`high`); phone/medium uses look2; portraits use the light portrait base.\n")
         f.write("- Portrait: light base + global skin-tone LUT; the LUT is scaled down for min/medium, so phone portraits stay gentler. No face mask, smoothing, or local whitening.\n")
         f.write("- A high face-saturation reading switches to a neutral portrait base.\n")
@@ -671,7 +811,8 @@ def main():
     print(f"processed={len(rows)} report={args.report}")
     for r in rows:
         print(f"  {r['file']}: {r['source']} / {r['strength']} / "
-              f"dn={r['denoise']} sh={r['sharpen']} / {r['class']} / {r['scene']} "
+              f"dn={r['denoise']} sh={r['sharpen']} "
+              f"fin={r['wb']}/{r['vibrance']}/{r['rolloff']} / {r['class']} / {r['scene']} "
               f"-> {r['action']} {os.path.basename(r['output']) if r['output'] else ''}")
 
 
